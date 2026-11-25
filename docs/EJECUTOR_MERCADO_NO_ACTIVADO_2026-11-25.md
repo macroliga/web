@@ -66,8 +66,10 @@ Para un `dry-run` conectado deben existir `DATABASE_URL` y `MACROLIGA_DIVISION_I
 
 Se validaron en el entorno de análisis las 16 simulaciones del planificador y las 7 pruebas de guardas del adaptador. El código de CLI pasa comprobación sintáctica V8. No se han ejecutado `npm test` ni pruebas con credenciales PostgreSQL desde un proceso Node independiente: esa comprobación queda pendiente de poder descargar el repositorio al entorno de pruebas.
 
-La base `macroliga-piloto` tiene **diez migraciones**, incluida la creación del rol de pruebas y una tabla privada de lista blanca. No hay sesiones reales habilitadas.
+La base `macroliga-piloto` tiene **once migraciones**: la décima creó el rol de pruebas y la undécima restringió la invocación de la función RLS automática. No hay sesiones reales habilitadas.
 
 **Recursos protegidos**: `comuniolaviana/web`, proyecto Supabase «Comunio Laviana» y aplicación pública, solo lectura.
 
 Consulta `docs/USUARIO_TECNICO_EJECUTOR_2026-11-25.md` para los resultados posteriores de permisos y la protección de la cuenta sin login.
+
+La actualización posterior de las pruebas con Node y el estado de las advertencias está en `docs/VALIDACION_CONEXION_NODE_Y_SEGURIDAD_2026-11-25.md`. 61 pruebas del conjunto local con Node.js 22 superadas; conexión externa aún no realizada por `NOLOGIN`.

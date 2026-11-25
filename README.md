@@ -8,7 +8,7 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- **Diez migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250010`).
+- **Once migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250011`).
 - 33 tablas públicas con seguridad por filas activada; se han añadido tablas privadas para políticas económicas e instantáneas de ganadores en el esquema `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
 - Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica y aceptación protegida de ofertas entre managers.
@@ -38,7 +38,7 @@ Las pruebas de `tests/sql/20261125_ventas_managers_rollback.sql` comprobaron tam
 
 Pruebas adicionales `tests/sql/20261125_roles_cierre_mercado_rollback.sql` y `tests/sql/20261125_desempate_tope_lotes_rollback.sql`: dos identidades bajo rol `authenticated`, pujas de terceros inaccesibles, cierre y publicación separados, ganador congelado, desempate por secuencia del servidor y máximo 15 lotes. Todas pasan en el PostgreSQL real y revierten los usuarios de ensayo.
 
-El planificador de mercado superó 16 simulaciones y el adaptador 7 controles de seguridad en el entorno de análisis. El ensayo completo con Node, PostgreSQL y dos conexiones independientes **sigue pendiente**.
+**Node.js 22:** se ejecutaron 61 pruebas locales de la fase 2 y del ejecutor (todas superadas), incluidas cinco pruebas reproducibles en `tests/integracion_ejecutor_node.test.mjs`. Por separado se ejecutó en PostgreSQL real el ensayo reversible `tests/sql/20261125_runner_reintentos_integracion_rollback.sql`. **La conexión externa real desde Node a Supabase sigue pendiente:** el usuario `macroliga_runner` permanece con `NOLOGIN`, sin contraseña ni cron.
 
 ## Código y ejecución local
 
@@ -63,6 +63,10 @@ npm run market:dry-run # requiere configuración de lectura segura
 - `supabase/migrations/202611250010_runner_minimos_permisos.sql`
 - `tests/sql/20261125_runner_permisos_rollback.sql`
 - `docs/USUARIO_TECNICO_EJECUTOR_2026-11-25.md`
+- `docs/VALIDACION_CONEXION_NODE_Y_SEGURIDAD_2026-11-25.md`
+- `tests/integracion_ejecutor_node.test.mjs`
+- `tests/sql/20261125_runner_reintentos_integracion_rollback.sql`
+- `supabase/migrations/202611250011_restringir_funcion_auto_rls.sql`
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
@@ -75,7 +79,7 @@ npm run market:dry-run # requiere configuración de lectura segura
 - Confirmar si la puja mínima del Computer debe ser exactamente el valor de mercado (criterio provisional en el generador).
 - Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
 - Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.
-- Revisar alertas del asesor de seguridad antes de producción. La función preexistente `public.rls_auto_enable()` quedó intacta.
+- Revisión de seguridad: el acceso de clientes a `public.rls_auto_enable()` se ha revocado sin desactivar su disparador. Quedan tres avisos de funciones autenticadas de pujas (intencionadas), 33 tablas sin políticas de lectura deliberadamente cerradas y comprobaciones de carga pendientes.
 
 **No está operativa todavía la liga piloto ni se han activado tareas programadas.** El motor económico está probado en el contexto limitado documentado.
 
