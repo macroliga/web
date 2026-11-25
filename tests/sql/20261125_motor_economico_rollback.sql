@@ -126,7 +126,7 @@ BEGIN
     aux:=lote_primero; lote_primero:=lote_segundo; lote_segundo:=aux;
   end if;
   insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status)
-    values(ciclo_malo,division,now()-interval '2 hours',now()-interval '1 hour',
+    values(ciclo_malo,division,now()-interval '4 hours',now()-interval '3 hours',
            now()-interval '20 minutes','calculated');
   insert into public.market_lots(id,cycle_id,player_id,minimum_bid_cents,division_id)
     values(lote_primero,ciclo_malo,jugador_e,100000000,division),
@@ -164,7 +164,7 @@ BEGIN
     raise exception 'No se prepararon los 16 jugadores';
   end if;
   insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status)
-    values(ciclo_lleno,division,now()-interval '2 hours',now()-interval '1 hour',
+    values(ciclo_lleno,division,now()-interval '6 hours',now()-interval '5 hours',
            now()-interval '20 minutes','calculated');
   insert into public.market_lots(id,cycle_id,player_id,minimum_bid_cents,division_id)
     values(lote_lleno,ciclo_lleno,jugador_17,100000000,division);
