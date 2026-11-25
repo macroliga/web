@@ -124,6 +124,63 @@ BEGIN
     end if;
   end;
 
+
+  -- Una venta al Computer no puede dejar comprometidas pujas imposibles.
+  insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status)
+    values(cycle,divi,now()-interval '1 hour',now()+interval '2 hours',
+           now()+interval '6 hours','open');
+  insert into public.players(id,name,position,current_market_value_cents)
+    values(gen_random_uuid(),'Libre para reserva 1','FWD',100000000)
+    returning id into player_fict;
+  insert into public.market_lots(id,cycle_id,player_id,minimum_bid_cents,division_id)
+    values(gen_random_uuid(),cycle,player_fict,10000000,divi)
+    returning id into lot_id;
+  insert into public.bids(lot_id,team_id,amount_cents,division_id,status)
+    values(lot_id,t1,1350000000,divi,'active');
+  insert into public.sale_listings(id,division_id,seller_team_id,player_id,
+        listed_at,expires_at,computer_offer_cents,computer_offer_at,status)
+   values(computer_listing,divi,t1,p2,now()-interval '1 hour',
+          now()+interval '1 day',10000000,now()-interval '10 minutes','open');
+  begin
+    perform app_private.vender_computer(computer_listing,'test-overbid-computer-'||p2);
+    raise exception 'TEST_ERROR: venta que deja pujas sin cubrir';
+  exception when others then
+    if SQLERRM not like 'La operación dejaría pujas sin cobertura%' then raise; end if;
+  end;
+  if (select status from public.sale_listings where id=computer_listing)<>'open'
+    or (select balance_cents from public.teams where id=t1)<>1320000000
+    or not exists(select 1 from public.roster_ownership
+                  where division_id=divi and player_id=p2 and team_id=t1) then
+    raise exception 'La venta imposible al Computer dejó efectos parciales';
+  end if;
+
+  -- Recuperar capacidad de venta para aislar el test de plazas reservadas.
+  update public.bids set status='withdrawn'
+    where team_id=t1 and division_id=divi and status='active';
+
+  -- Comprador con 2 jugadores y 14 pujas reservadas: la oferta por el 17º
+  -- destino potencial DEBE fallar antes de entrar en el patrimonio.
+  for i in 1..14 loop
+    insert into public.players(name,position,current_market_value_cents)
+      values('Reserva ficticia '||i,'DEF',100000000) returning id into player_fict;
+    insert into public.market_lots(cycle_id,player_id,minimum_bid_cents,division_id)
+      values(cycle,player_fict,100,divi) returning id into lot_id;
+    insert into public.bids(lot_id,team_id,amount_cents,division_id,status)
+      values(lot_id,t2,100,divi,'active');
+  end loop;
+  insert into public.manager_offers(listing_id,division_id,buyer_team_id,amount_cents,status)
+    values(listing3,divi,t2,410000000,'pending') returning id into offer_ok;
+  begin
+    perform app_private.aceptar_oferta_manager(offer_ok,'test-no-slots-'||offer_ok);
+    raise exception 'TEST_ERROR: aceptó compra con todas las plazas comprometidas';
+  exception when others then
+    if SQLERRM not like 'La operación comprometería más plazas%' then raise; end if;
+  end;
+  if (select balance_cents from public.teams where id=t2)<>1680000000
+     or (select status from public.manager_offers where id=offer_ok)<>'pending' then
+    raise exception 'La compra sin plazas dejó dinero o estado modificado';
+  end if;
+
   raise exception '__MACROLIGA_FASE4_PRUEBAS_OK_ROLLBACK__';
 EXCEPTION WHEN OTHERS THEN
   if SQLERRM='__MACROLIGA_FASE4_PRUEBAS_OK_ROLLBACK__' then
