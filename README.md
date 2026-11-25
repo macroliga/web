@@ -8,12 +8,12 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- **Nueve migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250009`).
+- **Diez migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250010`).
 - 33 tablas públicas con seguridad por filas activada; se han añadido tablas privadas para políticas económicas e instantáneas de ganadores en el esquema `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
 - Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica y aceptación protegida de ofertas entre managers.
 - Mercado diario: preparación de **máximo 15 futbolistas**, repiten los no vendidos del primer día; tras el segundo día salen del mercado y los de **menos de 750.000 €** pasan al Equipo Malo. Se calcula por la zona horaria de Madrid y **no hay cron activado**.
-- **Ejecutor de mercado preparado en código, todavía SIN ACTIVAR:** `src/server/mercado-ejecutor.mjs` y `scripts/ejecutar-mercado.mjs` permiten planificar cierre, publicación y nuevo mercado; por defecto solo lectura. Falta crear el usuario SQL limitado y el sistema de ejecución programada.
+- **Ejecutor de mercado preparado en código, todavía SIN ACTIVAR:** `src/server/mercado-ejecutor.mjs` y `scripts/ejecutar-mercado.mjs` permiten planificar cierre, publicación y nuevo mercado; por defecto solo lectura. El rol técnico `macroliga_runner` ya existe con `NOLOGIN`, sin contraseña y con lista blanca vacía. Siguen pendientes las credenciales seguras y la programación.
 - **Precio mínimo por tramos confirmado desde `comuniolaviana/web/normas.html`, apartado 9**, aplicado exclusivamente en MACROLIGA: valor +200.000 €, +300.000 €, +400.000 € o +500.000 € según tramo. **Ventas entre managers aún desactivadas** hasta tener autenticación y pasarela segura.
 - Recompra por compraventa bloqueada durante dos meses; los cálculos de saldo y plazas reservadas se comprueban al transferir.
 - Tabla original de cláusulas (383 filas) conservada en `datos/clausulas/`, con extensión de ejemplos hasta 200 millones. Los cobros de cláusulas siguen sin activarse.
@@ -60,6 +60,9 @@ npm run market:dry-run # requiere configuración de lectura segura
 - `docs/VALIDACION_CIERRE_MERCADO_2026-11-25.md`
 - `docs/VALIDACION_MERCADO_DIARIO_2026-11-25.md`
 - `docs/EJECUTOR_MERCADO_NO_ACTIVADO_2026-11-25.md`
+- `supabase/migrations/202611250010_runner_minimos_permisos.sql`
+- `tests/sql/20261125_runner_permisos_rollback.sql`
+- `docs/USUARIO_TECNICO_EJECUTOR_2026-11-25.md`
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
@@ -68,7 +71,7 @@ npm run market:dry-run # requiere configuración de lectura segura
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
 - El precio mínimo de ventas entre managers **ya está confirmado por tramos**; la función sigue inactiva para uso real hasta disponer de autenticación y autorización segura.
 - Implementar la liquidación de cláusulas y sus horarios con reglas de intervalo y redondeo confirmadas.
-- **Activar únicamente tras nueva aprobación** el ejecutor preparado para preparación, apertura, cierre y publicación a las 06:00/01:00. Aún no hay cron, rol SQL de ejecución ni credenciales configuradas.
+- **Activar únicamente tras nueva aprobación** el ejecutor preparado para preparación, apertura, cierre y publicación a las 06:00/01:00. Aún no hay cron ni credenciales configuradas; `macroliga_runner` existe sin posibilidad de iniciar sesión.
 - Confirmar si la puja mínima del Computer debe ser exactamente el valor de mercado (criterio provisional en el generador).
 - Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
 - Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.

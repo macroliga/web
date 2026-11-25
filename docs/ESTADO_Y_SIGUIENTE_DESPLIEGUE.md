@@ -4,7 +4,7 @@
 
 - Repositorio: `macroliga/web`.
 - Base de datos: Supabase `macroliga-piloto`, ref `xuwjbfnhvvbdargcohfe`.
-- **Nueve migraciones aplicadas**, 33 tablas públicas de aplicación protegidas con RLS. Las tablas privadas del motor no se exponen al usuario.
+- **Diez migraciones aplicadas**, 33 tablas públicas de aplicación protegidas con RLS. Las tablas privadas del motor no se exponen al usuario.
 - Economía transaccional: pujas privadas, ventas al Computer/Equipo Malo, ventas entre managers condicionadas a un precio mínimo por tramos.
 - Mercado: cierre 01:00, publicación 06:00, resultados congelados, preparación diaria con un máximo de **15 jugadores**, arrastre de los no vendidos del primer día y caducidad después del segundo.
 - Equipo Malo recibe automáticamente a los futbolistas no adjudicados tras su segundo día si tienen un valor de mercado **estrictamente inferior a 750.000 €**.
@@ -16,13 +16,14 @@
 - Planificador con `--dry-run` predeterminado: calcula acciones sobre divisiones aprobadas y temporadas activas.
 - Transacciones SQL existentes: cierre a la 01:00, publicación a las 06:00, preparación y apertura del nuevo mercado.
 - Bloqueos: sin días saltados, sin mercado posterior cuando falle el anterior, reintento sin repetir ciclos y rechazo de bases ajenas al piloto.
-- Adaptador PostgreSQL: host exclusivo de `macroliga-piloto`, usuario de ejecución exigido `macroliga_runner`, sin credenciales en código.
+- Adaptador PostgreSQL: host exclusivo de `macroliga-piloto`, usuario exigido `macroliga_runner`, y **solo siete funciones privadas verificadas**. El rol no puede consultar tablas directamente.
+- Pruebas PostgreSQL con `SET ROLE` temporal y reversión íntegra: permisos internos y lista blanca correctos. Batería lógica del ejecutor **24/24**.
 - **Comprobación:** 16 simulaciones de planificación y 7 controles del adaptador superados en el entorno de análisis; no se ha ejecutado el comando completo con Node y credenciales de PostgreSQL.
 - Documentación detallada: `docs/EJECUTOR_MERCADO_NO_ACTIVADO_2026-11-25.md`.
 
 ## No activado y pendientes
 
-- **Sin cron, sin Edge Function activa ni frontend**. No existe todavía ejecución diaria desatendida. El rol SQL `macroliga_runner` no está creado y no hay credenciales de ejecución configuradas.
+- **Sin cron, sin Edge Function activa ni frontend**. No existe todavía ejecución diaria desatendida. El rol SQL `macroliga_runner` está creado con `NOLOGIN`, sin contraseña y sin divisiones autorizadas; no hay credenciales de ejecución configuradas.
 - Falta una política definitiva sobre puja mínima inicial del Computer; provisionalmente el generador utiliza el valor de mercado.
 - Compraventa real entre managers desactivada hasta pasarela de autorización. Cláusulas ordinarias pendientes por criterios de umbrales/redondeo.
 - Sin datos deportivos reales importados ni permisos/licencias comprobadas.
@@ -31,3 +32,5 @@
 Consulta `docs/VALIDACION_MERCADO_DIARIO_2026-11-25.md` y `tests/sql/20261125_mercado_diario_dos_dias_rollback.sql`.
 
 **Comunio Laviana (GitHub y Supabase) sigue fuera de los cambios y protegido.**
+
+Documento actualizado de la cuenta técnica: `docs/USUARIO_TECNICO_EJECUTOR_2026-11-25.md`.

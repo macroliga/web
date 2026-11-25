@@ -2,7 +2,7 @@
 
 **Fecha:** 25/11/2026. **Único destino previsto:** Supabase `macroliga-piloto` (ref `xuwjbfnhvvbdargcohfe`).
 
-Este documento describe código preparado para un proceso de servidor. **No se ha creado ningún cron, GitHub Action, Edge Function ni usuario SQL; no existe ejecución desatendida.** Comunio Laviana no ha sido modificado.
+Este documento describe código preparado para un proceso de servidor. **No se ha creado ningún cron, GitHub Action ni Edge Function; no existe ejecución desatendida. El rol SQL `macroliga_runner` ya existe con `NOLOGIN`, sin contraseña.** Comunio Laviana no ha sido modificado.
 
 ## Código
 
@@ -30,7 +30,7 @@ El programa **consulta la hora al servidor PostgreSQL** y calcula el día local 
 - **Lista de divisiones obligatoria:** `MACROLIGA_DIVISION_IDS`, UUID separados por comas. Nunca procesa automáticamente todas las divisiones.
 - **Solo temporadas activas:** se consulta `seasons.status`; una división no activa no recibe mercado.
 - **Host restringido:** se exige `db.xuwjbfnhvvbdargcohfe.supabase.co/postgres` con PostgreSQL y TLS verificado. No se acepta el host de Comunio Laviana ni un pooler genérico hasta revisión específica.
-- **Usuario para ejecutar:** el código solo permite el nombre SQL `macroliga_runner`; **ese usuario todavía no está creado**. Tampoco se han concedido permisos a dicho rol.
+- **Usuario para ejecutar:** el código solo permite el nombre SQL `macroliga_runner`; **el rol ya existe, pero sigue con `NOLOGIN` y sin contraseña**. Solo se han concedido siete funciones `runner_*` protegidas; no acceso directo a tablas.
 - **Confirmación explícita:** `--execute` exige además `MACROLIGA_TARGET_REF=xuwjbfnhvvbdargcohfe` y `MACROLIGA_MARKET_RUN_ENABLED=CONFIRMO_SOLO_MACROLIGA_PILOTO`. Es un seguro frente a errores humanos, no un sustituto de credenciales y privilegios reales.
 - **No usar el usuario PostgreSQL `postgres`** para ejecutar, ni publicar la cadena `DATABASE_URL` en GitHub, la PWA, capturas o chats.
 - Los secretos deberán inyectarse mediante un sistema privado de secretos del futuro ejecutor. La carpeta `node_modules`, los archivos `.env` y los logs se excluyen con `.gitignore`.
@@ -43,8 +43,8 @@ El programa **consulta la hora al servidor PostgreSQL** y calcula el día local 
 
 **Todavía pendientes de aprobación:**
 
-1. Crear en `macroliga-piloto` el usuario SQL limitado `macroliga_runner`, diseñando permisos de solo lectura para calendario/ciclos y `EXECUTE` solo en cuatro funciones del mercado. No conceder `BYPASSRLS` general ni acceso a datos privados de pujas.
-2. Revisar las advertencias de Supabase y desarrollar una forma segura de leer los datos mínimos (las 33 tablas públicas tienen RLS activada y sin políticas de acceso generales).
+1. **Ya realizado:** crear `macroliga_runner` con `NOLOGIN`, lista blanca de divisiones vacía y siete funciones `runner_*` de mínimos privilegios. El rol no tiene `BYPASSRLS` ni acceso directo a datos privados.
+2. **Resuelta la lectura mínima:** funciones privadas `runner_division` y `runner_ciclos` con lista blanca; faltan las advertencias de seguridad generales de Supabase.
 3. Configurar el secreto `DATABASE_URL` fuera del repositorio, validar TLS y elegir el servidor o plataforma que lanzaría el proceso.
 4. Instalar dependencias en un entorno controlado y generar/verificar `package-lock.json` antes de un despliegue reproducible. Hasta entonces solo está preparado `package.json` con `pg`.
 5. Configurar los UUID reales de divisiones autorizadas tras crear la liga piloto. Actualmente no hay divisiones, managers ni jugadores reales.
@@ -66,6 +66,8 @@ Para un `dry-run` conectado deben existir `DATABASE_URL` y `MACROLIGA_DIVISION_I
 
 Se validaron en el entorno de análisis las 16 simulaciones del planificador y las 7 pruebas de guardas del adaptador. El código de CLI pasa comprobación sintáctica V8. No se han ejecutado `npm test` ni pruebas con credenciales PostgreSQL desde un proceso Node independiente: esa comprobación queda pendiente de poder descargar el repositorio al entorno de pruebas.
 
-La base `macroliga-piloto` sigue con **nueve migraciones**, sin cambios de tablas ni permisos en esta fase.
+La base `macroliga-piloto` tiene **diez migraciones**, incluida la creación del rol de pruebas y una tabla privada de lista blanca. No hay sesiones reales habilitadas.
 
 **Recursos protegidos**: `comuniolaviana/web`, proyecto Supabase «Comunio Laviana» y aplicación pública, solo lectura.
+
+Consulta `docs/USUARIO_TECNICO_EJECUTOR_2026-11-25.md` para los resultados posteriores de permisos y la protección de la cuenta sin login.
