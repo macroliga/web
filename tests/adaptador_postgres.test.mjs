@@ -27,6 +27,12 @@ test('una ejecución real no admite el usuario postgres con sufijos',async()=>{
     modoEscritura:true
   }),/usuario de base de datos limitado/);
 });
+test('otro usuario SQL no está autorizado para ejecutar el mercado',async()=>{
+  await assert.rejects(()=>conectarPiloto({
+    cadenaConexion:'postgresql://cualquier_usuario:secreto@db.xuwjbfnhvvbdargcohfe.supabase.co/postgres',
+    modoEscritura:true
+  }),/macroliga_runner/);
+});
 test('los errores del destino no revelan contraseñas',async()=>{
   const clave='CONTRASENA_FICTICIA_SUPER_SECRETA';
   await assert.rejects(
