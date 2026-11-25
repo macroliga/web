@@ -11,13 +11,22 @@
 - Pruebas en PostgreSQL real realizadas: dos mercados ficticios seguidos, Equipo Malo, límite de 15, dos divisiones independientes, cambio de horario verano/invierno y cuatro suites anteriores de regresión.
 - Todos los ensayos se hicieron con reversión de datos ficticios; sin managers ni dinero virtual de prueba permanente.
 
+## Ejecutor preparado (código, NO operativo)
+
+- Planificador con `--dry-run` predeterminado: calcula acciones sobre divisiones aprobadas y temporadas activas.
+- Transacciones SQL existentes: cierre a la 01:00, publicación a las 06:00, preparación y apertura del nuevo mercado.
+- Bloqueos: sin días saltados, sin mercado posterior cuando falle el anterior, reintento sin repetir ciclos y rechazo de bases ajenas al piloto.
+- Adaptador PostgreSQL: host exclusivo de `macroliga-piloto`, usuario de ejecución exigido `macroliga_runner`, sin credenciales en código.
+- **Comprobación:** 16 simulaciones de planificación y 7 controles del adaptador superados en el entorno de análisis; no se ha ejecutado el comando completo con Node y credenciales de PostgreSQL.
+- Documentación detallada: `docs/EJECUTOR_MERCADO_NO_ACTIVADO_2026-11-25.md`.
+
 ## No activado y pendientes
 
-- **Sin cron, sin Edge Function activa ni frontend**. No existe todavía ejecución diaria desatendida.
+- **Sin cron, sin Edge Function activa ni frontend**. No existe todavía ejecución diaria desatendida. El rol SQL `macroliga_runner` no está creado y no hay credenciales de ejecución configuradas.
 - Falta una política definitiva sobre puja mínima inicial del Computer; provisionalmente el generador utiliza el valor de mercado.
 - Compraventa real entre managers desactivada hasta pasarela de autorización. Cláusulas ordinarias pendientes por criterios de umbrales/redondeo.
 - Sin datos deportivos reales importados ni permisos/licencias comprobadas.
-- Pendientes pruebas reales entre conexiones simultáneas diferentes, revisión de advertencias de Supabase, copias de seguridad y panel de administración.
+- Pendientes pruebas reales desde Node y entre conexiones simultáneas distintas, configuración SQL de mínimos privilegios, revisión de advertencias de Supabase, copias de seguridad y panel de administración.
 
 Consulta `docs/VALIDACION_MERCADO_DIARIO_2026-11-25.md` y `tests/sql/20261125_mercado_diario_dos_dias_rollback.sql`.
 
