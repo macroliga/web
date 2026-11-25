@@ -20,8 +20,8 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
     throw new Error('Destino rechazado: solo se admite la base directa de macroliga-piloto');
   }
   const usuario=decodeURIComponent(uri.username);
-  if (modoEscritura && (usuario==='postgres' || usuario.startsWith('postgres.'))) {
-    throw new Error('La ejecución exige un usuario de base de datos limitado, NO postgres administrador');
+  if (modoEscritura && usuario!=='macroliga_runner') {
+    throw new Error('La ejecución exige el usuario de base de datos limitado macroliga_runner, nunca postgres administrador');
   }
 
   let Pool;
