@@ -12,7 +12,7 @@ DECLARE
  v_date date:=(pg_catalog.clock_timestamp() at time zone 'Europe/Madrid')::date;
  v_now timestamptz;
  v_count integer;
- v_day record;
+ v_new integer;
 BEGIN
   if not exists(
     select 1 from pg_roles r where r.rolname='macroliga_runner'
@@ -95,7 +95,7 @@ BEGIN
   end;
 
   select ciclo_id,arrastrados,nuevos
-   into v_cycle,v_count,v_day
+   into v_cycle,v_count,v_new
     from app_private.runner_preparar(v_allowed,v_date);
   -- La selección está vacía: el rol puede preparar sin inventar futbolistas.
   if v_cycle is null or v_count<>0 then
