@@ -68,10 +68,17 @@ BEGIN
   exception when others then
     if SQLERRM not like 'Ciclo aún no publicable%' then raise; end if;
   end;
+  -- Las pujas ya estaban aceptadas durante la ventana de mercado.
+  update public.bids set accepted_at=now()-interval '90 minutes'
+    where lot_id=lote;
   update public.market_cycles
      set closes_at=now()-interval '1 hour',
-         publishes_at=now()-interval '20 minutes'
+         publishes_at=now()-interval '20 minutes',
+         status='open'
    where id=ciclo;
+  if app_private.cerrar_calcular_ciclo(ciclo)<>1 then
+    raise exception 'El cierre no congeló al ganador';
+  end if;
   n:=app_private.publicar_ciclo(ciclo);
   if n<>1 then raise exception 'La publicación no adjudicó exactamente una puja'; end if;
   if not exists(select 1 from public.roster_ownership where division_id=division
@@ -144,13 +151,18 @@ BEGIN
   end if;
   insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status)
     values(ciclo_malo,division,now()-interval '4 hours',now()-interval '3 hours',
-           now()-interval '20 minutes','calculated');
+           now()-interval '20 minutes','open');
   insert into public.market_lots(id,cycle_id,player_id,minimum_bid_cents,division_id)
     values(lote_primero,ciclo_malo,jugador_e,100000000,division),
           (lote_segundo,ciclo_malo,jugador_c,100000000,division);
   insert into public.bids(lot_id,team_id,amount_cents,status,division_id)
     values(lote_primero,equipo_a,100000000,'active',division),
           (lote_segundo,equipo_a,100000000,'active',division);
+  update public.bids set accepted_at=now()-interval '210 minutes'
+    where lot_id in (lote_primero,lote_segundo);
+  if app_private.cerrar_calcular_ciclo(ciclo_malo)<>2 then
+    raise exception 'El ciclo inconsistente no congeló 2 ofertas';
+  end if;
   begin
     perform app_private.publicar_ciclo(ciclo_malo);
     raise exception 'ERROR: se publicó un ciclo incoherente';
@@ -182,11 +194,16 @@ BEGIN
   end if;
   insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status)
     values(ciclo_lleno,division,now()-interval '6 hours',now()-interval '5 hours',
-           now()-interval '20 minutes','calculated');
+           now()-interval '20 minutes','open');
   insert into public.market_lots(id,cycle_id,player_id,minimum_bid_cents,division_id)
     values(lote_lleno,ciclo_lleno,jugador_17,100000000,division);
   insert into public.bids(lot_id,team_id,amount_cents,status,division_id)
     values(lote_lleno,equipo_b,100000000,'active',division);
+  update public.bids set accepted_at=now()-interval '330 minutes'
+    where lot_id=lote_lleno;
+  if app_private.cerrar_calcular_ciclo(ciclo_lleno)<>1 then
+    raise exception 'No se congeló la puja de la plantilla llena';
+  end if;
   begin
     perform app_private.publicar_ciclo(ciclo_lleno);
     raise exception 'ERROR: se permitió el jugador 17';
