@@ -3,10 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Pruebas locales del motor de MACROLIGA; NO desplegado",
+  "description": "Motor MACROLIGA en desarrollo, con migraciones y pruebas de PostgreSQL real; no es producción",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/domain/mercado.mjs && node --check src/domain/puntuacion.mjs && node --check src/domain/calendario.mjs && node --check src/domain/importacion.mjs && node --check src/domain/publicacion_mercado.mjs"
+    "check": "node --check src/domain/mercado.mjs && node --check src/domain/puntuacion.mjs && node --check src/domain/calendario.mjs && node --check src/domain/importacion.mjs && node --check src/domain/publicacion_mercado.mjs && node --check src/domain/clausulas.mjs"
   },
   "engines": {
     "node": ">=20"
