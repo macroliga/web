@@ -20,8 +20,8 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
     throw new Error('Destino rechazado: solo se admite la base directa de macroliga-piloto');
   }
   const usuario=decodeURIComponent(uri.username);
-  if (modoEscritura && usuario!=='macroliga_runner') {
-    throw new Error('La ejecución exige el usuario de base de datos limitado macroliga_runner, nunca postgres administrador');
+  if (usuario!=='macroliga_runner') {
+    throw new Error('Solo se admite macroliga_runner, también para simulaciones de lectura; nunca postgres administrador');
   }
 
   let Pool;
@@ -42,37 +42,37 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
   };
   return {
     async horaServidor() {
-      const r=await consultar('select pg_catalog.clock_timestamp() as hora');
+      const r=await consultar('select app_private.runner_hora_servidor() as hora');
       return r[0].hora;
     },
     async division(id) {
       const r=await consultar(
-        "select d.id,d.timezone,s.status as season_status from public.divisions d join public.seasons s on s.id=d.season_id where d.id=$1::uuid",
+        "select * from app_private.runner_division($1::uuid)",
         [id]
       );
       return r[0]??null;
     },
     async ciclos(id) {
       return consultar(
-        'select id,opens_at,closes_at,publishes_at,status from public.market_cycles where division_id=$1::uuid order by opens_at asc',
+        'select * from app_private.runner_ciclos($1::uuid)',
         [id]
       );
     },
     async cerrar(id) {
-      const r=await consultar('select app_private.cerrar_calcular_ciclo($1::uuid) as total',[id]);
+      const r=await consultar('select app_private.runner_cerrar($1::uuid) as total',[id]);
       return r[0].total;
     },
     async publicar(id) {
-      const r=await consultar('select app_private.publicar_ciclo($1::uuid) as total',[id]);
+      const r=await consultar('select app_private.runner_publicar($1::uuid) as total',[id]);
       return r[0].total;
     },
     async preparar(id,dia) {
-      const r=await consultar('select * from app_private.preparar_mercado_diario($1::uuid,$2::date)',[id,dia]);
+      const r=await consultar('select * from app_private.runner_preparar($1::uuid,$2::date)',[id,dia]);
       if (r.length!==1) throw new Error('La preparación no devolvió un ciclo único');
       return r[0];
     },
     async abrir(id) {
-      const r=await consultar('select app_private.abrir_mercado_diario($1::uuid) as total',[id]);
+      const r=await consultar('select app_private.runner_abrir($1::uuid) as total',[id]);
       return r[0].total;
     },
     async cerrarConexion() { await pool.end(); },
