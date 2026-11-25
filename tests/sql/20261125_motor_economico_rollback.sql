@@ -60,9 +60,18 @@ BEGIN
   perform pg_catalog.set_config('request.jwt.claim.sub',u_b::text,true);
   puja:=public.macroliga_presentar_puja(lote,300000000);
   if puja is null then raise exception 'No se registró la puja B'; end if;
-  update public.market_cycles set status='calculated',
-    closes_at=now()-interval '1 hour',publishes_at=now()-interval '20 minutes'
-    where id=ciclo;
+  -- Incluso con ciclo calculado, antes de la hora oficial no se publica.
+  update public.market_cycles set status='calculated' where id=ciclo;
+  begin
+    perform app_private.publicar_ciclo(ciclo);
+    raise exception 'ERROR: publicación anticipada';
+  exception when others then
+    if SQLERRM not like 'Ciclo aún no publicable%' then raise; end if;
+  end;
+  update public.market_cycles
+     set closes_at=now()-interval '1 hour',
+         publishes_at=now()-interval '20 minutes'
+   where id=ciclo;
   n:=app_private.publicar_ciclo(ciclo);
   if n<>1 then raise exception 'La publicación no adjudicó exactamente una puja'; end if;
   if not exists(select 1 from public.roster_ownership where division_id=division
@@ -97,6 +106,14 @@ BEGIN
   if (select status from public.sale_listings where id=anuncio)<>'accepted' then
     raise exception 'No se cerró el anuncio vendido';
   end if;
+  -- Una clave distinta no puede revender el mismo anuncio.
+  begin
+    perform app_private.vender_computer(anuncio,
+      'otra-clave-'||gen_random_uuid()::text);
+    raise exception 'ERROR: se volvió a vender un anuncio aceptado';
+  exception when others then
+    if SQLERRM not like 'No existe una oferta vigente%' then raise; end if;
+  end;
 
   -- VENTA INMEDIATA EQUIPO MALO: se utiliza el valor actual (2 millones).
   venta:=app_private.vender_equipo_malo(equipo_a,jugador_a,clave_malo);
