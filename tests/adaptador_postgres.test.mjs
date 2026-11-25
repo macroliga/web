@@ -33,6 +33,11 @@ test('otro usuario SQL no está autorizado para ejecutar el mercado',async()=>{
     modoEscritura:true
   }),/macroliga_runner/);
 });
+test('ni siquiera el modo de lectura permite usar postgres administrador',async()=>{
+  await assert.rejects(()=>conectarPiloto({
+    cadenaConexion:'postgresql://postgres:secreto@db.xuwjbfnhvvbdargcohfe.supabase.co/postgres'
+  }),/macroliga_runner/);
+});
 test('los errores del destino no revelan contraseñas',async()=>{
   const clave='CONTRASENA_FICTICIA_SUPER_SECRETA';
   await assert.rejects(
