@@ -8,10 +8,10 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- **Siete migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250007`).
-- 33 tablas públicas con seguridad por filas activada; se ha añadido una tabla de políticas económicas en el esquema privado `app_private`.
+- **Ocho migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250008`).
+- 33 tablas públicas con seguridad por filas activada; se han añadido tablas privadas para políticas económicas e instantáneas de ganadores en el esquema `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
-- Motor económico privado: ventas al Computer y al Equipo Malo, publicación atómica de mercado y aceptación de ofertas entre managers.
+- Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica del mercado y aceptación de ofertas entre managers.
 - **Precio mínimo por tramos confirmado desde `comuniolaviana/web/normas.html`, apartado 9**, aplicado exclusivamente en MACROLIGA: valor +200.000 €, +300.000 €, +400.000 € o +500.000 € según tramo. **Ventas entre managers aún desactivadas** hasta tener autenticación y pasarela segura.
 - Recompra por compraventa bloqueada durante dos meses; los cálculos de saldo y plazas reservadas se comprueban al transferir.
 - Tabla original de cláusulas (383 filas) conservada en `datos/clausulas/`, con extensión de ejemplos hasta 200 millones. Los cobros de cláusulas siguen sin activarse.
@@ -34,6 +34,8 @@ Las pruebas de `tests/sql/20261125_ventas_managers_rollback.sql` comprobaron tam
 
 **Los datos ficticios se revierten dentro del propio bloque de prueba** y se verificó después que `auth.users`, `managers`, `teams`, `players`, `wallet_entries` y `transfer_operations` tienen cero registros.
 
+Pruebas adicionales `tests/sql/20261125_roles_cierre_mercado_rollback.sql` y `tests/sql/20261125_desempate_tope_lotes_rollback.sql`: dos identidades bajo rol `authenticated`, pujas de terceros inaccesibles, cierre y publicación separados, ganador congelado, desempate por secuencia del servidor y máximo 15 lotes. Todas pasan en el PostgreSQL real y revierten los usuarios de ensayo.
+
 ## Código y ejecución local
 
 El código JavaScript está en `src/domain/`; las migraciones SQL en `supabase/migrations/`; y las pruebas en `tests/`.
@@ -47,16 +49,18 @@ npm run check
 
 - `supabase/migrations/202611250006_ventas_entre_managers_protegidas.sql`
 - `supabase/migrations/202611250007_precio_minimo_compraventa_por_tramos.sql`
+- `supabase/migrations/202611250008_cierre_y_ganadores_congelados.sql`
 - `docs/REGLA_VENTAS_MANAGER_2026-11-25.md`
+- `docs/VALIDACION_CIERRE_MERCADO_2026-11-25.md`
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
 ## Pendiente antes de dar acceso a managers reales
 
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
-- **Aprobar y configurar el mínimo de las ventas entre managers**; el motor ya puede ejecutar la aceptación en pruebas, pero permanece desactivado para uso real.
+- El precio mínimo de ventas entre managers **ya está confirmado por tramos**; la función sigue inactiva para uso real hasta disponer de autenticación y autorización segura.
 - Implementar la liquidación de cláusulas y sus horarios con reglas de intervalo y redondeo confirmadas.
-- Automatizar el cálculo previo del ciclo (`calculated`), los 15 lotes, la retención de un segundo día, Equipo Malo para no vendidos de bajo valor y el disparo automático a las 06:00.
+- **Programar** el cierre/cálculo ya disponible, la distribución de hasta 15 lotes, la retención de un segundo día, Equipo Malo para no vendidos de bajo valor y el disparo automático de la publicación a las 06:00. No existe ningún cron activo.
 - Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
 - Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.
 - Revisar alertas del asesor de seguridad antes de producción. La función preexistente `public.rls_auto_enable()` quedó intacta.
