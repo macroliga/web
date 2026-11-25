@@ -8,10 +8,11 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- **Ocho migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250008`).
+- **Nueve migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250009`).
 - 33 tablas públicas con seguridad por filas activada; se han añadido tablas privadas para políticas económicas e instantáneas de ganadores en el esquema `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
-- Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica del mercado y aceptación de ofertas entre managers.
+- Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica y aceptación protegida de ofertas entre managers.
+- Mercado diario: preparación de **máximo 15 futbolistas**, repiten los no vendidos del primer día; tras el segundo día salen del mercado y los de **menos de 750.000 €** pasan al Equipo Malo. Se calcula por la zona horaria de Madrid y **no hay cron activado**.
 - **Precio mínimo por tramos confirmado desde `comuniolaviana/web/normas.html`, apartado 9**, aplicado exclusivamente en MACROLIGA: valor +200.000 €, +300.000 €, +400.000 € o +500.000 € según tramo. **Ventas entre managers aún desactivadas** hasta tener autenticación y pasarela segura.
 - Recompra por compraventa bloqueada durante dos meses; los cálculos de saldo y plazas reservadas se comprueban al transferir.
 - Tabla original de cláusulas (383 filas) conservada en `datos/clausulas/`, con extensión de ejemplos hasta 200 millones. Los cobros de cláusulas siguen sin activarse.
@@ -50,8 +51,10 @@ npm run check
 - `supabase/migrations/202611250006_ventas_entre_managers_protegidas.sql`
 - `supabase/migrations/202611250007_precio_minimo_compraventa_por_tramos.sql`
 - `supabase/migrations/202611250008_cierre_y_ganadores_congelados.sql`
+- `supabase/migrations/202611250009_mercado_diario_dos_dias.sql`
 - `docs/REGLA_VENTAS_MANAGER_2026-11-25.md`
 - `docs/VALIDACION_CIERRE_MERCADO_2026-11-25.md`
+- `docs/VALIDACION_MERCADO_DIARIO_2026-11-25.md`
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
@@ -60,7 +63,8 @@ npm run check
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
 - El precio mínimo de ventas entre managers **ya está confirmado por tramos**; la función sigue inactiva para uso real hasta disponer de autenticación y autorización segura.
 - Implementar la liquidación de cláusulas y sus horarios con reglas de intervalo y redondeo confirmadas.
-- **Programar** el cierre/cálculo ya disponible, la distribución de hasta 15 lotes, la retención de un segundo día, Equipo Malo para no vendidos de bajo valor y el disparo automático de la publicación a las 06:00. No existe ningún cron activo.
+- **Programar** las operaciones ya disponibles de preparación, apertura, cierre y publicación de mercado a las 06:00/01:00. El segundo día y Equipo Malo están programados, pero no hay cron activo.
+- Confirmar si la puja mínima del Computer debe ser exactamente el valor de mercado (criterio provisional en el generador).
 - Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
 - Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.
 - Revisar alertas del asesor de seguridad antes de producción. La función preexistente `public.rls_auto_enable()` quedó intacta.
