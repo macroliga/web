@@ -1,6 +1,11 @@
 -- MACROLIGA: prueba de rol técnico real con SET ROLE (sin credenciales).
 -- Todos los datos ficticios, lista blanca y ciclos se revierten al finalizar.
 -- Ejecutar SOLO en Supabase macroliga-piloto.
+-- La conexión administrativa necesita permiso temporal SET ROLE solo durante
+-- este ensayo. BEGIN/ROLLBACK evitan dejar membresías, divisiones o usuarios.
+begin;
+grant macroliga_runner to postgres with set true, inherit false;
+
 DO $probe$
 DECLARE
  v_comp uuid:=gen_random_uuid();
@@ -136,3 +141,4 @@ EXCEPTION WHEN OTHERS THEN
     raise;
   end if;
 END $probe$;
+rollback;
