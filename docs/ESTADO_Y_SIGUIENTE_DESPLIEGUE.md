@@ -1,22 +1,13 @@
-# MACROLIGA — Estado actualizado al 25/11/2026
+# MACROLIGA · Estado al 25/11/2026 (revisión de compraventas)
 
-> Este documento sustituye el inventario inicial anterior al despliegue. Los historiales de migración en GitHub conservan los borradores originales, pero **ya se han aplicado las cinco primeras migraciones a macroliga-piloto**.
+- Supabase `macroliga-piloto`, proyecto `xuwjbfnhvvbdargcohfe`: **siete migraciones aplicadas**. Código fuente en GitHub `macroliga/web`.
+- 33 tablas de juego protegidas con RLS y motor económico privado.
+- Ventas entre managers con mínimo por tramos según las normas oficiales de Comunio Laviana 2026/27, apartado 9.
+- Prueba SQL de integración completa repetida después del cambio de precio.
+- Sin managers ni cuentas reales; sin operaciones ni procesos automáticos activados.
+- **La regla de precio está programada, pero la compraventa está desactivada en producción** hasta disponer de autorización segura por manager y pruebas de concurrencia.
+- Aún quedan cláusulas ejecutables, mercado automático, frontend, notificaciones, pruebas multiusuario reales y advertencias de seguridad por revisar.
 
-## Estado confirmado
+Más detalles: `docs/REGLA_VENTAS_MANAGER_2026-11-25.md`.
 
-- `macroliga-piloto` (ref `xuwjbfnhvvbdargcohfe`): activo en región europea.
-- 33 tablas instaladas con seguridad por filas activada.
-- 5 migraciones registradas en Supabase; última: motor económico transaccional.
-- 3 funciones públicas controladas de pujas y 4 privadas de contabilidad/venta/publicación.
-- Prueba integrada en PostgreSQL real superada con rollback automático: cero datos de managers y traspasos.
-- Ninguna conexión ni recurso de Comunio Laviana modificado.
-
-## Lo siguiente NO está operativo
-
-Cuentas reales, interfaz móvil, descargas deportivas, cierres automáticos, calendario conectado, ventas entre managers, cláusulas, premios por jornadas y cron.
-
-## Próxima fase
-
-Finalizar reglas mínimas de ventas entre managers y cláusulas, construir la autorización de API, realizar tests con varias sesiones simultáneas y dejar un plan de respaldo y recuperación. No activar la competición sin superar las pruebas de seguridad.
-
-**Detalles verificables:** `docs/RESULTADOS_MOTOR_ECONOMICO_2026-11-25.md`, `tests/sql/20261125_motor_economico_rollback.sql`.
+Comunio Laviana permanece en modo lectura y separado de MACROLIGA.

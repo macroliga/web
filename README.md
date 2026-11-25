@@ -8,11 +8,11 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- **Seis migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250006`).
+- **Siete migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250007`).
 - 33 tablas públicas con seguridad por filas activada; se ha añadido una tabla de políticas económicas en el esquema privado `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
 - Motor económico privado: ventas al Computer y al Equipo Malo, publicación atómica de mercado y aceptación de ofertas entre managers.
-- **Ventas entre managers desactivadas por defecto** hasta acordar el porcentaje mínimo de precio. No hay ningún porcentaje inventado en los datos de la competición.
+- **Precio mínimo por tramos confirmado desde `comuniolaviana/web/normas.html`, apartado 9**, aplicado exclusivamente en MACROLIGA: valor +200.000 €, +300.000 €, +400.000 € o +500.000 € según tramo. **Ventas entre managers aún desactivadas** hasta tener autenticación y pasarela segura.
 - Recompra por compraventa bloqueada durante dos meses; los cálculos de saldo y plazas reservadas se comprueban al transferir.
 - Tabla original de cláusulas (383 filas) conservada en `datos/clausulas/`, con extensión de ejemplos hasta 200 millones. Los cobros de cláusulas siguen sin activarse.
 - Ninguna función económica puede ejecutarse directamente desde la cuenta anónima; el backend de confianza debe proteger la autorización de cada operación.
@@ -46,6 +46,8 @@ npm run check
 ## Documentación de esta fase
 
 - `supabase/migrations/202611250006_ventas_entre_managers_protegidas.sql`
+- `supabase/migrations/202611250007_precio_minimo_compraventa_por_tramos.sql`
+- `docs/REGLA_VENTAS_MANAGER_2026-11-25.md`
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
