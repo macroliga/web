@@ -20,7 +20,12 @@ export function publicarCicloSimulado(estado, plan, ahoraUtc) {
   if (estado.publicaciones.has(plan.cicloId)) {
     return {estado, nuevosMovimientos:0, yaPublicado:true};
   }
-  if (new Date(ahoraUtc).getTime() < new Date(plan.publicaEn).getTime()) {
+  const instanteActual = new Date(ahoraUtc).getTime();
+  const instantePublicacion = new Date(plan.publicaEn).getTime();
+  if (!Number.isFinite(instanteActual) || !Number.isFinite(instantePublicacion)) {
+    throw new TypeError('Fechas de publicación inválidas');
+  }
+  if (instanteActual < instantePublicacion) {
     throw new Error('PUBLICACION_PREMATURA: la adjudicación aún no debe ser visible');
   }
   const equipos = new Map([...estado.equipos.entries()].map(([id, e])=>[

@@ -59,15 +59,36 @@ export function validarPuja({ saldoCentimos, valorPlantillaCentimos, futbolistas
     plazasRestantesDespues: maximoFutbolistas - futbolistasEnPlantilla - pujasActivasCentimos.length - 1 };
 }
 
-/** Orden: importe descendente; empate por fecha de REGISTRO ascendente; id como último criterio técnico. */
+/**
+ * Orden: importe descendente; empate por marca de tiempo y secuencia
+ * monotónica del servidor (bids.submission_order). Si ambas marcas temporales
+ * coinciden, no usar un UUID aleatorio para decidir quién fue primero.
+ */
 export function ordenarPujasDeLote(pujas) {
+  if (!Array.isArray(pujas)) throw new TypeError('Se esperaba una lista de pujas');
+  for (const p of pujas) {
+    if (typeof p.importeCentimos !== 'bigint' || p.importeCentimos <= 0n) {
+      throw new TypeError('Importe de puja incorrecto');
+    }
+    if (!Number.isFinite(new Date(p.registradaEn).getTime())) {
+      throw new TypeError('Fecha de puja inválida');
+    }
+  }
   return [...pujas].sort((a, b) => {
     if (a.importeCentimos !== b.importeCentimos) return a.importeCentimos > b.importeCentimos ? -1 : 1;
     const ta = new Date(a.registradaEn).getTime();
     const tb = new Date(b.registradaEn).getTime();
-    if (!Number.isFinite(ta) || !Number.isFinite(tb)) throw new TypeError('Fecha de puja inválida');
     if (ta !== tb) return ta - tb;
-    return String(a.id).localeCompare(String(b.id));
+    const sa = a.secuenciaRegistro;
+    const sb = b.secuenciaRegistro;
+    if (!(typeof sa === 'bigint' || Number.isSafeInteger(sa)) ||
+        !(typeof sb === 'bigint' || Number.isSafeInteger(sb))) {
+      throw new Error('PRIORIDAD_NO_DETERMINABLE: dos pujas comparten instante sin secuencia');
+    }
+    if (BigInt(sa) === BigInt(sb)) {
+      throw new Error('PRIORIDAD_NO_DETERMINABLE: secuencias duplicadas');
+    }
+    return BigInt(sa) < BigInt(sb) ? -1 : 1;
   });
 }
 

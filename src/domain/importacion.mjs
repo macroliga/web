@@ -8,8 +8,10 @@ export function aplicarPuntuaciones(snapshot, entradas) {
   const resultado = new Map(snapshot);
   let nuevas = 0, corregidas = 0, ignoradas = 0;
   for (const entrada of entradas) {
-    if (typeof entrada.claveJugadorPartido !== 'string' || !Number.isInteger(entrada.revision) ||
-        entrada.revision < 1 || !Number.isInteger(entrada.puntos)) {
+    if (typeof entrada.claveJugadorPartido !== 'string' ||
+        entrada.claveJugadorPartido.trim().length === 0 ||
+        !Number.isSafeInteger(entrada.revision) || entrada.revision < 1 ||
+        !Number.isSafeInteger(entrada.puntos)) {
       throw new TypeError('Puntuación deportiva inválida');
     }
     const anterior = resultado.get(entrada.claveJugadorPartido);

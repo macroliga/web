@@ -4,13 +4,13 @@
 
 - `macroliga-piloto` / `xuwjbfnhvvbdargcohfe`: ACTIVE_HEALTHY.
 - Esquema `public`: sin tablas de aplicación; sin migraciones; sin Edge Functions.
-- GitHub `macroliga/web`: repositorio existente, informado con tamaño 0 y permisos administrativos disponibles en la conexión.
-- **No se ha ejecutado ni enviado código** a Supabase o GitHub durante esta fase.
+- GitHub `macroliga/web`: código inicial publicado y verificado el 25/11/2026; revisión de seguridad adicional preparada.
+- **No se ha ejecutado ninguna migración ni creado tablas en Supabase.** Los cambios posteriores en GitHub son solo archivos fuente.
 
 ## Código desarrollado
 
-- 5 módulos JavaScript del dominio y 3 borradores SQL de migración.
-- 37 pruebas automatizadas superadas localmente (incluidas 5 pruebas **estáticas** del contrato SQL).
+- 5 módulos JavaScript del dominio y 4 borradores SQL de migración.
+- 49 pruebas automatizadas superadas localmente (incluidas pruebas **estáticas** del contrato SQL); no sustituyen pruebas sobre PostgreSQL real.
 - Se utiliza `BigInt` para evitar imprecisiones en los euros y se guarda SQL como `BIGINT` en céntimos.
 - Validación inmediata de pujas; nada de permitir ofertas que se corregirían al adjudicar.
 - Funciones de puja ligadas a identidad `auth.uid()`; no se acepta el equipo como dato confiable del cliente.
@@ -25,7 +25,7 @@ Cambios planificados al autorizar un despliegue controlado:
 1. Inspección del SQL y prueba de sintaxis/transacciones en PostgreSQL de ensayo.
 2. Aplicar migración 0001 para crear 33 tablas sin datos, índices y RLS de denegación por defecto.
 3. Aplicar 0002: restricciones compuestas de división y pujas activas.
-4. Aplicar 0003: tres funciones RPC `macroliga_presentar_puja`, `macroliga_retirar_puja`, `macroliga_mis_pujas`.
+4. Aplicar 0003 y, tras revisar, 0004: tres funciones RPC `macroliga_presentar_puja`, `macroliga_retirar_puja`, `macroliga_mis_pujas`.
 5. Verificar permisos `anon` / `authenticated` con dos usuarios de prueba y dos divisiones.
 6. Solo después, preparar acceso a datos no sensibles y herramientas administrativas.
 
@@ -56,4 +56,4 @@ Cambios planificados al autorizar un despliegue controlado:
 
 ## Autorización
 
-Esta entrega solo autoriza **programación y pruebas locales**. Antes de escribir en Supabase o publicar GitHub, se debe confirmar el cambio concreto y comprobar de nuevo la identidad del proyecto. Nunca tocar Comunio Laviana.
+La publicación del código en GitHub `macroliga/web` fue autorizada y realizada. **No se ha autorizado ni ejecutado la instalación de tablas en Supabase**. Antes de escribir en `macroliga-piloto`, confirmar expresamente la intervención y comprobar la identidad del proyecto. Nunca tocar Comunio Laviana.

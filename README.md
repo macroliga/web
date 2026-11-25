@@ -1,6 +1,6 @@
 # MACROLIGA · Primer código de la liga piloto
 
-**Fecha:** 25/11/2026 · **Estado:** código local probado parcialmente, **NO desplegado**.
+**Fecha:** 25/11/2026 · **Estado:** fuentes publicadas en GitHub, pruebas locales; **NO instalado en Supabase**.
 
 **Identidad del proyecto autorizada para un futuro despliegue:**
 - GitHub: `macroliga/web` (repositorio de MACROLIGA, no Comunio Laviana).
@@ -19,11 +19,12 @@ El código JavaScript de `src/domain/` ejecuta reglas independientes de la inter
 
 ## SQL preparado, pendiente de ejecución y prueba real
 
-`supabase/migrations/` contiene tres migraciones **en borrador revisable**:
+`supabase/migrations/` contiene cuatro migraciones **en borrador revisable**:
 
 1. `202611250001_core_schema.sql`: 33 tablas, RLS denegatorio por defecto y dinero en céntimos.
 2. `202611250002_consistencia_divisiones.sql`: claves compuestas para impedir mezclar datos de distintas divisiones.
 3. `202611250003_pujas_seguras.sql`: funciones transaccionales para presentar/retirar pujas y consultar SOLO las propias; bloqueo de fila de equipo, horarios y límites comprobados en servidor.
+4. `202611250004_integridad_pendiente.sql`: secuencia de registro de ofertas, validación de los actores de traspasos e historial sin duplicaciones de eventos con equipo nulo.
 
 **El SQL aún NO ha pasado una ejecución de PostgreSQL real.** Sus pruebas actuales son verificaciones estructurales estáticas; no constituyen una auditoría de seguridad ni garantizan despliegue sin errores.
 
@@ -49,4 +50,4 @@ Las pruebas no requieren librerías externas ni ninguna contraseña. No hacen co
 
 **No cargar usuarios reales, no activar operaciones económicas, no publicar el frontend** hasta superar pruebas de PostgreSQL, aislamiento entre usuarios/divisiones, idempotencia y autorización del organizador.
 
-Consulta `docs/ESTADO_Y_SIGUIENTE_DESPLIEGUE.md` para la lista concreta de cambios y riesgos.
+Consulta `docs/REVISION_TECNICA_2026-11-25.md` y `docs/ESTADO_Y_SIGUIENTE_DESPLIEGUE.md` para la lista concreta de cambios y riesgos.
