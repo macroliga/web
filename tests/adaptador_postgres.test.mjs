@@ -19,13 +19,13 @@ test('una ejecución real no admite conexiones postgres administrador',async()=>
   await assert.rejects(()=>conectarPiloto({
     cadenaConexion:'postgresql://postgres:secreto@db.xuwjbfnhvvbdargcohfe.supabase.co/postgres',
     modoEscritura:true
-  }),/usuario de base de datos limitado/);
+  }),/macroliga_runner/);
 });
 test('una ejecución real no admite el usuario postgres con sufijos',async()=>{
   await assert.rejects(()=>conectarPiloto({
     cadenaConexion:'postgresql://postgres.otro:secreto@db.xuwjbfnhvvbdargcohfe.supabase.co/postgres',
     modoEscritura:true
-  }),/usuario de base de datos limitado/);
+  }),/macroliga_runner/);
 });
 test('otro usuario SQL no está autorizado para ejecutar el mercado',async()=>{
   await assert.rejects(()=>conectarPiloto({
