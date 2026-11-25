@@ -19,10 +19,16 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
   if (uri.hostname.toLowerCase()!==HOST_PILOTO || uri.pathname!=='/postgres') {
     throw new Error('Destino rechazado: solo se admite la base directa de macroliga-piloto');
   }
+  // Una opción de conexión como ?sslmode=disable puede sustituir las
+  // opciones TLS del cliente pg. Exigir URL limpia y puerto PostgreSQL.
+  if (uri.search || uri.hash || (uri.port && uri.port!=='5432')) {
+    throw new Error('Parámetros, fragmentos o puerto no autorizados en DATABASE_URL');
+  }
   const usuario=decodeURIComponent(uri.username);
   if (usuario!=='macroliga_runner') {
     throw new Error('Solo se admite macroliga_runner, también para simulaciones de lectura; nunca postgres administrador');
   }
+  if (!uri.password) throw new Error('Falta la contraseña en el gestor privado de secretos');
 
   let Pool;
   try { ({Pool}=await import('pg')); } catch {
@@ -40,6 +46,13 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
     const r=await pool.query(sql,params);
     return r.rows;
   };
+  return crearAdaptadorConsultas(consultar,()=>pool.end());
+}
+
+/** Construye un adaptador desde un transporte SQL. Permite probar el flujo
+ * completo en Node.js con consultas ficticias sin tocar PostgreSQL real. */
+export function crearAdaptadorConsultas(consultar,cerrarConexion=async()=>{}) {
+  if (typeof consultar!=='function') throw new TypeError('Transporte SQL requerido');
   return {
     async horaServidor() {
       const r=await consultar('select app_private.runner_hora_servidor() as hora');
@@ -75,6 +88,6 @@ export async function conectarPiloto({cadenaConexion,modoEscritura=false}={}) {
       const r=await consultar('select app_private.runner_abrir($1::uuid) as total',[id]);
       return r[0].total;
     },
-    async cerrarConexion() { await pool.end(); },
+    async cerrarConexion() { await cerrarConexion(); },
   };
 }
