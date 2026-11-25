@@ -1,53 +1,52 @@
-# MACROLIGA · Primer código de la liga piloto
+# MACROLIGA · Liga piloto 2026/27
 
-**Fecha:** 25/11/2026 · **Estado:** fuentes publicadas en GitHub, pruebas locales; **NO instalado en Supabase**.
+Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y para reutilizarse en 2027/28.
 
-**Identidad del proyecto autorizada para un futuro despliegue:**
-- GitHub: `macroliga/web` (repositorio de MACROLIGA, no Comunio Laviana).
-- Supabase: `macroliga-piloto`, proyecto ref `xuwjbfnhvvbdargcohfe`, región `eu-west-1`.
-- **Prohibido:** aplicar este código al proyecto Supabase `Comunio Laviana`, repositorio `comuniolaviana/web`, reutilizar sus secretos o alterar su aplicación.
+**Estado comprobado el 25/11/2026:** base de datos de ensayo instalada en Supabase **`macroliga-piloto`**, proyecto `xuwjbfnhvvbdargcohfe`. No hay managers reales ni cuentas creadas.
 
-## ¿Qué es funcional hoy?
+**Recursos protegidos, solo lectura:** repositorio `comuniolaviana/web`, Supabase «Comunio Laviana» y su aplicación. No se comparten claves, datos operativos ni automatizaciones.
 
-El código JavaScript de `src/domain/` ejecuta reglas independientes de la interfaz:
+## Qué hay realmente instalado
 
-- `mercado.mjs`: capacidad económica = saldo + 25 % de valor de plantilla, reserva agregada de pujas, plazas hasta 16, desempate por importe y registro más antiguo, validación de horarios.
-- `puntuacion.mjs`: once, penalización -4 por hueco, once vacío 0, saldo negativo al inicio 0, premios por puntos y a tres últimos, ajuste por diferencias.
-- `calendario.mjs`: primer comienzo de jornada, aplazamientos y cuenta atrás con marcas de tiempo.
-- `publicacion_mercado.mjs`: simulación de cierre/publicación a las 06:00, todo-o-nada, doble ejecución sin duplicidades y sin sustitución de ganadores.
-- `importacion.mjs`: importación idempotente de puntos/versiones y correcciones sin acumulación duplicada.
+- Cinco migraciones aplicadas en **macroliga-piloto** (`202611250001` a `202611250005`).
+- 33 tablas con seguridad por filas activada, sin acceso directo a las tablas para roles `anon` y `authenticated` por defecto.
+- Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
+- Cuatro funciones privadas económicas en `app_private`: contabilidad interna, ventas al Computer, ventas al Equipo Malo y publicación atómica de un ciclo de mercado.
+- La cuenta con `service_role` puede invocar las tres funciones económicas de entrada. El motor interno no tiene permiso directo para roles cliente. **No exponer secretos en el frontend.**
 
-## SQL preparado, pendiente de ejecución y prueba real
+## Pruebas realizadas
 
-`supabase/migrations/` contiene cuatro migraciones **en borrador revisable**:
+Los módulos `src/domain/` superaron anteriormente 49 pruebas locales. La prueba adicional `tests/sql/20261125_motor_economico_rollback.sql` se ejecutó con éxito en el PostgreSQL real del piloto y verificó:
 
-1. `202611250001_core_schema.sql`: 33 tablas, RLS denegatorio por defecto y dinero en céntimos.
-2. `202611250002_consistencia_divisiones.sql`: claves compuestas para impedir mezclar datos de distintas divisiones.
-3. `202611250003_pujas_seguras.sql`: funciones transaccionales para presentar/retirar pujas y consultar SOLO las propias; bloqueo de fila de equipo, horarios y límites comprobados en servidor.
-4. `202611250004_integridad_pendiente.sql`: secuencia de registro de ofertas, validación de los actores de traspasos e historial sin duplicaciones de eventos con equipo nulo.
+- Mayor puja ganadora, descuento íntegro, cambio de propietario e historial.
+- Venta inmediata al Computer por importe de la oferta y al Equipo Malo por valor de mercado.
+- No pagar dos veces por un reintento con la misma clave.
+- Rechazo de una segunda venta y de operaciones sin propietario.
+- Bloqueo de publicación anterior a la hora prevista.
+- Rollback total de un ciclo cuando uno de sus lotes es inconsistente, sin elegir otro ganador.
+- Prohibición de incorporar un 17.º jugador.
+- Conciliación del saldo con el libro de movimientos.
 
-**El SQL aún NO ha pasado una ejecución de PostgreSQL real.** Sus pruebas actuales son verificaciones estructurales estáticas; no constituyen una auditoría de seguridad ni garantizan despliegue sin errores.
+**Los datos ficticios se revierten dentro del propio bloque de prueba** y se verificó después que `auth.users`, `managers`, `teams`, `players`, `wallet_entries` y `transfer_operations` tienen cero registros.
 
-## Cómo probar en un ordenador con Node.js 20 o posterior
+## Código y ejecución local
 
-Desde la carpeta que contiene `package.json`:
+El código JavaScript está en `src/domain/`; las migraciones SQL en `supabase/migrations/`; y las pruebas en `tests/`.
 
 ```bash
 npm test
 npm run check
 ```
 
-Las pruebas no requieren librerías externas ni ninguna contraseña. No hacen conexiones a Internet ni a Supabase.
+## Pendiente antes de dar acceso a managers reales
 
-## Lo que todavía NO funciona en producción
+- Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
+- Implementar ofertas entre managers con precio mínimo definitivo y todas las cláusulas y sus horarios.
+- Automatizar el cálculo previo del ciclo (`calculated`), los 15 lotes, la retención de un segundo día, Equipo Malo para no vendidos de bajo valor y el disparo automático a las 06:00.
+- Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
+- Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.
+- Revisar alertas del asesor de seguridad antes de producción. La función preexistente `public.rls_auto_enable()` quedó intacta.
 
-- Cuentas de Supabase Auth, asignación de jugadores y RLS de lectura al frontend.
-- Adjudicación del Computer y publicación atómica a las 06:00.
-- Transferencias instantáneas, Equipo Malo, cláusulas, liquidación económica y copia de seguridad.
-- Descarga de datos de fútbol, calendario oficial y conexión de APIs (permisos pendientes).
-- Aplicación móvil y pantallas finales.
-- Validaciones de consistencia tras venta o cláusula que cambie el valor de una plantilla con pujas en vigor.
+**No está operativa todavía la liga piloto ni se han activado tareas programadas.** El motor económico está probado en el contexto limitado documentado.
 
-**No cargar usuarios reales, no activar operaciones económicas, no publicar el frontend** hasta superar pruebas de PostgreSQL, aislamiento entre usuarios/divisiones, idempotencia y autorización del organizador.
-
-Consulta `docs/REVISION_TECNICA_2026-11-25.md` y `docs/ESTADO_Y_SIGUIENTE_DESPLIEGUE.md` para la lista concreta de cambios y riesgos.
+Consulta `docs/RESULTADOS_MOTOR_ECONOMICO_2026-11-25.md` para el detalle de esta fase.
