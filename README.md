@@ -8,11 +8,14 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 ## Qué hay realmente instalado
 
-- Cinco migraciones aplicadas en **macroliga-piloto** (`202611250001` a `202611250005`).
-- 33 tablas con seguridad por filas activada, sin acceso directo a las tablas para roles `anon` y `authenticated` por defecto.
+- **Seis migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250006`).
+- 33 tablas públicas con seguridad por filas activada; se ha añadido una tabla de políticas económicas en el esquema privado `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
-- Cuatro funciones privadas económicas en `app_private`: contabilidad interna, ventas al Computer, ventas al Equipo Malo y publicación atómica de un ciclo de mercado.
-- La cuenta con `service_role` puede invocar las tres funciones económicas de entrada. El motor interno no tiene permiso directo para roles cliente. **No exponer secretos en el frontend.**
+- Motor económico privado: ventas al Computer y al Equipo Malo, publicación atómica de mercado y aceptación de ofertas entre managers.
+- **Ventas entre managers desactivadas por defecto** hasta acordar el porcentaje mínimo de precio. No hay ningún porcentaje inventado en los datos de la competición.
+- Recompra por compraventa bloqueada durante dos meses; los cálculos de saldo y plazas reservadas se comprueban al transferir.
+- Tabla original de cláusulas (383 filas) conservada en `datos/clausulas/`, con extensión de ejemplos hasta 200 millones. Los cobros de cláusulas siguen sin activarse.
+- Ninguna función económica puede ejecutarse directamente desde la cuenta anónima; el backend de confianza debe proteger la autorización de cada operación.
 
 ## Pruebas realizadas
 
@@ -27,6 +30,8 @@ Los módulos `src/domain/` superaron anteriormente 49 pruebas locales. La prueba
 - Prohibición de incorporar un 17.º jugador.
 - Conciliación del saldo con el libro de movimientos.
 
+Las pruebas de `tests/sql/20261125_ventas_managers_rollback.sql` comprobaron también en PostgreSQL real: venta de manager a manager, precio mínimo inactivo, rechazo de importes inferiores al suelo de prueba, idempotencia, recompra antes de dos meses, saldo sin crédito suficiente, ventas que dejarían pujas sin cobertura y compras que superarían las plazas reservadas. La política usada en las pruebas se revierte.
+
 **Los datos ficticios se revierten dentro del propio bloque de prueba** y se verificó después que `auth.users`, `managers`, `teams`, `players`, `wallet_entries` y `transfer_operations` tienen cero registros.
 
 ## Código y ejecución local
@@ -38,10 +43,17 @@ npm test
 npm run check
 ```
 
+## Documentación de esta fase
+
+- `supabase/migrations/202611250006_ventas_entre_managers_protegidas.sql`
+- `tests/sql/20261125_ventas_managers_rollback.sql`
+- `datos/clausulas/README.md` y los CSV originales.
+
 ## Pendiente antes de dar acceso a managers reales
 
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
-- Implementar ofertas entre managers con precio mínimo definitivo y todas las cláusulas y sus horarios.
+- **Aprobar y configurar el mínimo de las ventas entre managers**; el motor ya puede ejecutar la aceptación en pruebas, pero permanece desactivado para uso real.
+- Implementar la liquidación de cláusulas y sus horarios con reglas de intervalo y redondeo confirmadas.
 - Automatizar el cálculo previo del ciclo (`calculated`), los 15 lotes, la retención de un segundo día, Equipo Malo para no vendidos de bajo valor y el disparo automático a las 06:00.
 - Resolver cambios de plantilla/valor posteriores a pujas ya admitidas y la gestión de incidencias.
 - Implementar alineaciones, jornadas, premios, correcciones, interfaz y fuentes deportivas con permisos de uso.
