@@ -42,19 +42,20 @@ BEGIN
    values(listing,divi,t1,p1,now()-interval '1 hour',now()+interval '1 day','open');
   insert into public.manager_offers(id,listing_id,division_id,buyer_team_id,amount_cents,status) values
     (offer_low,listing,divi,t3,290000000,'pending'),
-    (offer_ok,listing,divi,t2,320000000,'pending');
+    (offer_ok,listing,divi,t2,350000000,'pending');
 
   -- Sin aprobación del precio mínimo, ni siquiera una oferta buena se admite.
   begin
     perform app_private.aceptar_oferta_manager(offer_ok,'test-disabled-'||offer_ok);
     raise exception 'TEST_ERROR: función activada sin política';
   exception when others then
-    if SQLERRM not like 'Ventas entre managers pendientes%' then raise; end if;
+    if SQLERRM not like 'Ventas entre managers no activadas%' then raise; end if;
   end;
 
-  -- Solo dentro de la prueba activamos un suelo ficticio del 100 %. Se revierte.
-  insert into app_private.manager_trade_policies(division_id,min_sale_percent,enabled)
-   values(divi,100,true);
+  -- Activamos únicamente en esta transacción de prueba los recargos fijos
+  -- de Comunio Laviana. La configuración se revierte al terminar.
+  insert into app_private.manager_trade_policies(division_id,enabled)
+   values(divi,true);
   begin
     perform app_private.aceptar_oferta_manager(offer_low,'test-too-low-'||offer_low);
     raise exception 'TEST_ERROR: aceptó oferta por debajo del mínimo';
@@ -71,8 +72,8 @@ BEGIN
      where division_id=divi and player_id=p1 and team_id=t2) then
     raise exception 'No se actualizó el propietario';
   end if;
-  if (select balance_cents from public.teams where id=t1)<>1320000000
-    or (select balance_cents from public.teams where id=t2)<>1680000000 then
+  if (select balance_cents from public.teams where id=t1)<>1350000000
+    or (select balance_cents from public.teams where id=t2)<>1650000000 then
     raise exception 'Los saldos de la compraventa no cuadran';
   end if;
   if (select count(*) from public.wallet_entries where operation_key='test-ok-'||offer_ok)<>2 then
@@ -99,7 +100,7 @@ BEGIN
   insert into public.sale_listings(id,division_id,seller_team_id,player_id,listed_at,expires_at,status)
    values(listing2,divi,t2,p1,now()-interval '1 hour',now()+interval '1 day','open');
   insert into public.manager_offers(id,listing_id,division_id,buyer_team_id,amount_cents,status)
-   values(offer_buyback,listing2,divi,t1,330000000,'pending');
+   values(offer_buyback,listing2,divi,t1,360000000,'pending');
   begin
     perform app_private.aceptar_oferta_manager(offer_buyback,'test-buyback-'||offer_buyback);
     raise exception 'TEST_ERROR: recompra prematura';
@@ -111,7 +112,7 @@ BEGIN
   insert into public.sale_listings(id,division_id,seller_team_id,player_id,listed_at,expires_at,status)
    values(listing3,divi,t1,p2,now()-interval '1 hour',now()+interval '1 day','open');
   insert into public.manager_offers(id,listing_id,division_id,buyer_team_id,amount_cents,status)
-   values(offer_poor,listing3,divi,t3,410000000,'pending');
+   values(offer_poor,listing3,divi,t3,450000000,'pending');
   begin
     perform app_private.aceptar_oferta_manager(offer_poor,'test-poor-'||offer_poor);
     raise exception 'TEST_ERROR: comprador sin cobertura';
@@ -136,7 +137,7 @@ BEGIN
     values(gen_random_uuid(),cycle,player_fict,10000000,divi)
     returning id into lot_id;
   insert into public.bids(lot_id,team_id,amount_cents,division_id,status)
-    values(lot_id,t1,1350000000,divi,'active');
+    values(lot_id,t1,1390000000,divi,'active');
   insert into public.sale_listings(id,division_id,seller_team_id,player_id,
         listed_at,expires_at,computer_offer_cents,computer_offer_at,status)
    values(computer_listing,divi,t1,p2,now()-interval '1 hour',
@@ -148,7 +149,7 @@ BEGIN
     if SQLERRM not like 'La operación dejaría pujas sin cobertura%' then raise; end if;
   end;
   if (select status from public.sale_listings where id=computer_listing)<>'open'
-    or (select balance_cents from public.teams where id=t1)<>1320000000
+    or (select balance_cents from public.teams where id=t1)<>1350000000
     or not exists(select 1 from public.roster_ownership
                   where division_id=divi and player_id=p2 and team_id=t1) then
     raise exception 'La venta imposible al Computer dejó efectos parciales';
@@ -169,14 +170,14 @@ BEGIN
       values(lot_id,t2,100,divi,'active');
   end loop;
   insert into public.manager_offers(listing_id,division_id,buyer_team_id,amount_cents,status)
-    values(listing3,divi,t2,410000000,'pending') returning id into offer_ok;
+    values(listing3,divi,t2,450000000,'pending') returning id into offer_ok;
   begin
     perform app_private.aceptar_oferta_manager(offer_ok,'test-no-slots-'||offer_ok);
     raise exception 'TEST_ERROR: aceptó compra con todas las plazas comprometidas';
   exception when others then
     if SQLERRM not like 'La operación comprometería más plazas%' then raise; end if;
   end;
-  if (select balance_cents from public.teams where id=t2)<>1680000000
+  if (select balance_cents from public.teams where id=t2)<>1650000000
      or (select status from public.manager_offers where id=offer_ok)<>'pending' then
     raise exception 'La compra sin plazas dejó dinero o estado modificado';
   end if;
