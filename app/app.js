@@ -119,3 +119,8 @@ try {
   buscar('connection-state').textContent = 'Pendiente de configurar';
   aviso('Vista previa sin cuentas reales. Falta configurar la clave publica de la API.');
 }
+
+// Cache solo de archivos estaticos; nunca de datos de futbolistas ni sesiones.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
