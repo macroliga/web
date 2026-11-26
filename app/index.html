@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#082637">
+  <meta name="description" content="MACROLIGA, liga piloto de fútbol fantasy.">
+  <title>MACROLIGA · Piloto</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="head">
+      <span class="logo" aria-hidden="true">⚽</span>
+      <div class="brand"><h1>MACROLIGA</h1><p>Temporada piloto 2026/27</p></div>
+      <span class="pending">EN PRUEBAS</span>
+    </header>
+    <section class="card login-card" aria-labelledby="login-title">
+      <div class="card-head"><h2 id="login-title">Acceso de managers</h2><span id="connection-state" class="tiny"></span></div>
+      <form id="login-form" class="login-form">
+        <label>Correo de acceso<input id="email" name="email" type="email" autocomplete="username" required></label>
+        <label>Contraseña<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+        <div class="actions"><button type="submit" id="login-button">Entrar</button><button type="button" id="logout-button" hidden>Salir</button></div>
+      </form>
+      <p id="login-message" class="hint" role="status" aria-live="polite">Todavía no se han creado las cuentas de los managers.</p>
+    </section>
+    <section class="card team-card" aria-labelledby="team-title">
+      <div class="card-head"><h2 id="team-title">Mi equipo</h2><span id="team-division" class="tiny">Sin iniciar sesión</span></div>
+      <p id="team-name" class="team-name">Tu equipo aparecerá aquí</p>
+      <div class="figures">
+        <div><span>Saldo</span><strong id="team-balance">—</strong></div>
+        <div><span>Valor de plantilla</span><strong id="team-value">—</strong></div>
+        <div><span>Futbolistas</span><strong id="team-players">—</strong></div>
+        <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
+      </div>
+      <details class="roster"><summary>Consultar mi plantilla</summary><ul id="roster-list"><li>Inicia sesión para verla.</li></ul></details>
+    </section>
+    <section aria-label="Accesos principales" class="features">
+      <article class="tile tile-clauses"><span aria-hidden="true">🔨</span><h2>CLÁUSULAS</h2><p>Horarios según calendario</p><small>Función pendiente</small></article>
+      <article class="tile tile-lineup"><span aria-hidden="true">👕</span><h2>ALINEACIÓN</h2><p>Once y partidos</p><small>Cuenta atrás pendiente</small></article>
+      <article class="tile tile-market"><span aria-hidden="true">⚽</span><h2>MERCADO</h2><p id="market-status">Consultando horario…</p><small>06:00–01:00 · Operaciones pendientes</small></article>
+      <article class="tile tile-bad"><span aria-hidden="true">👹</span><h2>EQUIPO MALO</h2><p id="bad-status">Consultando horario…</p><small>12:00–00:00 · Operaciones pendientes</small></article>
+    </section>
+    <section class="card news" aria-labelledby="news-title">
+      <div class="card-head"><h2 id="news-title">📰 Noticias</h2><span class="tiny">Traspasos del día</span></div>
+      <p>Los traspasos aparecerán aquí cuando esté conectado el cierre automático del mercado.</p>
+    </section>
+    <nav class="bottom-nav" aria-label="Navegación">
+      <span class="active">⌂ <small>Inicio</small></span>
+      <span>📖 <small>Normas</small></span>
+      <span>🏆 <small>Copa</small></span>
+      <span>📊 <small>Clasificación</small></span>
+      <span>⚙ <small>Admin</small></span>
+    </nav>
+    <p class="prototype-note">Prototipo de desarrollo. No hay mercados ni operaciones activadas.</p>
+  </main>
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
