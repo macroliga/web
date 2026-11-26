@@ -1,7 +1,7 @@
-import { crearCliente } from './api.mjs?v=22';
+import { crearCliente } from './api.mjs?v=23';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
-import { crearPanelCatalogo } from './catalogo.mjs?v=22';
-import { crearPanelAlineacion } from './alineacion.mjs?v=22';
+import { crearPanelCatalogo } from './catalogo.mjs?v=23';
+import { crearPanelAlineacion } from './alineacion.mjs?v=23';
 import { crearPanelAdmin } from './admin.mjs?v=17';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
@@ -495,14 +495,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='22')return false;
-  url.searchParams.set('release','22');
+  if(!manual&&url.searchParams.get('release')==='23')return false;
+  url.searchParams.set('release','23');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='22'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='23'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.

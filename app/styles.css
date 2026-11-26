@@ -191,6 +191,28 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @media(max-width:350px){.lineup-slots{padding:13px 6px}.pitch-row{gap:2px}.pitch-marker{width:30px;height:30px}.pitch-name{font-size:10px;padding:2px}.lineup-toolbar{align-items:center}}
 #lineup-panel button:not(.primary-button){padding:.65rem;border:1px solid #b2c8ce;background:#f1f6f8;color:#254b5d;border-radius:9px}
 #lineup-panel button[hidden]{display:none}
-#lineup-fixtures{padding-left:1.1rem;font-size:14px;color:#345560}
+/* Calendario de jornada · compacto, ordenado por día y hora local. */
+.fixture-calendar{display:grid;gap:8px;padding-top:11px;border-top:1px solid #e1edf0;min-width:0}
+.fixture-heading{display:flex;align-items:center;justify-content:space-between;gap:6px}
+#lineup-panel .fixture-heading h3{margin:0;font-size:17px;line-height:1.25}
+#lineup-fixtures-summary{flex-shrink:0;font-size:11px;font-weight:750;color:#12636d;background:#e8f4f4;border-radius:99px;padding:5px 9px}
+.fixture-legend{display:grid;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);gap:6px;align-items:center;font-size:10px;color:#657d89;text-transform:uppercase;letter-spacing:.06em;font-weight:800;padding:4px 9px 0}
+.fixture-legend span:first-child{text-align:right}.fixture-legend span:nth-child(2){text-align:center}.fixture-legend span:last-child{text-align:left}
+#lineup-fixtures,.fixture-matches{list-style:none;margin:0;padding:0;min-width:0}
+#lineup-fixtures{display:grid;gap:9px}
+.fixture-day{border:1px solid #dce7e9;border-radius:11px;overflow:hidden}
+.fixture-day-heading{background:#eaf3f5;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:7px}
+.fixture-day-heading h4{margin:0;color:#215262;font-size:12px;font-weight:800;line-height:1.2}.fixture-day-heading h4::first-letter{text-transform:uppercase}
+.fixture-day-count{font-size:10px;font-weight:650;color:#587781;white-space:nowrap}
+.fixture-row{display:grid;align-items:center;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);gap:6px;padding:10px 9px;min-height:49px;background:#fff}
+.fixture-row+.fixture-row{border-top:1px solid #edf2f3}
+.fixture-team{font-size:13px;font-weight:750;color:#233b47;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.fixture-home{text-align:right}.fixture-away{text-align:left}
+.fixture-kickoff{display:grid;justify-items:center;gap:3px;min-width:0}
+.fixture-time{display:block;text-align:center;background:#f0f5f7;border:1px solid #e2ebee;color:#215767;border-radius:6px;padding:4px 6px;font-size:12px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;max-width:100%;overflow-wrap:anywhere}
+.fixture-status{font-size:10px;line-height:1.15;text-align:center;color:#667a85}.fixture-live{color:#1b724d;font-weight:800}
+.fixture-empty{color:#607987;font-size:13px;padding:14px 9px;border:1px dashed #cbdbdf;border-radius:9px;text-align:center}
+@media(max-width:350px){.fixture-row,.fixture-legend{grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr);gap:4px;padding-left:6px;padding-right:6px}.fixture-team{font-size:12px}.fixture-time{font-size:11px;padding:4px}.fixture-heading h3{font-size:16px}}
+
 .roster-market-button{border:1px solid #b2c8ce;border-radius:10px;background:#e9f5f5;color:#16616c;padding:7px 9px;font-size:11px;font-weight:800;min-height:37px}
 

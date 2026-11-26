@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-release="22">
+<html lang="es" data-release="23">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=22">
+  <link rel="stylesheet" href="./styles.css?v=23">
 </head>
 <body>
   <div class="shell">
@@ -215,7 +215,14 @@
             <button class="primary-button" type="button" id="lineup-save" disabled>Guardar once</button>
             <button type="button" id="lineup-draft" hidden>Preparar borrador personal</button>
             <button type="button" id="lineup-reload">Actualizar jornada</button>
-            <h3>Partidos de la jornada</h3><ul id="lineup-fixtures"></ul>
+            <section class="fixture-calendar" aria-labelledby="fixture-heading">
+              <div class="fixture-heading">
+                <h3 id="fixture-heading">Partidos de la jornada</h3>
+                <span id="lineup-fixtures-summary" hidden></span>
+              </div>
+              <div id="lineup-fixtures-legend" class="fixture-legend" aria-hidden="true" hidden><span>Local</span><span>Hora</span><span>Visitante</span></div>
+              <ul id="lineup-fixtures" aria-label="Calendario de partidos"></ul>
+            </section>
           </section>
           <section id="standings-panel" class="detail-card standings-panel" hidden aria-labelledby="standings-heading">
             <h2 id="standings-heading">Clasificación</h2>
@@ -278,10 +285,10 @@
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
-    <div class="release-info"><span>Aplicación piloto · versión 22</span><button id="app-refresh" type="button">Actualizar app</button></div>
+    <div class="release-info"><span>Aplicación piloto · versión 23</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=22"></script>
+  <script type="module" src="./app.js?v=23"></script>
 </body>
 </html>
 

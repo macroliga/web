@@ -1,6 +1,34 @@
 const posiciones={GK:'POR',DEF:'DEF',MID:'MED',FWD:'DEL'};
 const nombres={GK:'Portero',DEF:'Defensa',MID:'Centrocampista',FWD:'Delantero'};
 const fecha=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',dateStyle:'short',timeStyle:'short'});
+const fechaDia=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',weekday:'long',day:'numeric',month:'long'});
+const claveDia=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit',day:'2-digit'});
+const horaPartido=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const estadosPartido={
+ TIMED:null,SCHEDULED:null,IN_PLAY:'En juego',LIVE:'En juego',PLAYING:'En juego',IN_PROGRESS:'En juego',
+ PAUSED:'Descanso',FINISHED:'Finalizado',POSTPONED:'Aplazado',SUSPENDED:'Suspendido',
+ CANCELLED:'Cancelado',CANCELED:'Cancelado',AWARDED:'Resuelto',TBD:'Por confirmar'
+};
+export function agruparPartidos(partidos){
+ const grupos=new Map();
+ const partidosOrdenados=partidos.map(p=>{
+  const t=p.inicio?Date.parse(p.inicio):NaN;
+  return {...p,t:Number.isFinite(t)?t:Infinity};
+ }).sort((a,b)=>a.t-b.t);
+ for(const p of partidosOrdenados){
+  const conocido=Number.isFinite(p.t),inicio=conocido?new Date(p.t):null;
+  const clave=conocido?claveDia.format(inicio):'pendiente';
+  if(!grupos.has(clave))grupos.set(clave,{clave,dia:conocido?fechaDia.format(inicio):'Fecha por confirmar',partidos:[]});
+  const estado=String(p.estado||'').toUpperCase().trim();
+  grupos.get(clave).partidos.push({
+   local:p.local||'Local por confirmar',visitante:p.visitante||'Visitante por confirmar',
+   inicio:conocido?inicio.toISOString():null,hora:conocido?horaPartido.format(inicio):'Por confirmar',
+   estado:Object.hasOwn(estadosPartido,estado)?estadosPartido[estado]:'Estado por confirmar',
+   enJuego:['IN_PLAY','LIVE','PLAYING','IN_PROGRESS','PAUSED'].includes(estado)
+  });
+ }
+ return [...grupos.values()];
+}
 const vacio=()=>Array(11).fill(null);
 export const FORMACIONES=Object.freeze(['3-4-3','3-5-2','4-3-3','4-4-2','4-5-1','5-3-2','5-4-1']);
 const porDefecto='4-4-2';
@@ -44,6 +72,7 @@ export function crearPanelAlineacion(root,contexto){
  if(!root)return null;
  const doc=root.ownerDocument,el=id=>root.querySelector('#'+id);
  const status=el('lineup-status'),message=el('lineup-message'),count=el('lineup-count'),positions=el('lineup-positions');
+ const fixtureSummary=el('lineup-fixtures-summary'),fixtureLegend=el('lineup-fixtures-legend');
  const list=el('lineup-slots'),fixtures=el('lineup-fixtures'),save=el('lineup-save'),draft=el('lineup-draft'),reload=el('lineup-reload');
  const form=el('lineup-formation'),help=el('lineup-validation'),extras=el('lineup-extras'),controls=el('lineup-controls');
  // Una copia antigua del HTML puede seguir abierta: app.js fuerza una actualización.
@@ -110,8 +139,39 @@ export function crearPanelAlineacion(root,contexto){
    });
   }
  }
+ function renderPartidos(partidos){
+  fixtures.replaceChildren();
+  if(fixtureSummary){
+   fixtureSummary.textContent=partidos.length?partidos.length+(partidos.length===1?' partido':' partidos'):'';
+   fixtureSummary.hidden=!partidos.length;
+  }
+  if(fixtureLegend)fixtureLegend.hidden=!partidos.length;
+  if(!partidos.length){fixtures.appendChild(node('li','Aún no hay partidos confirmados en MACROLIGA.','fixture-empty'));return;}
+  for(const grupo of agruparPartidos(partidos)){
+   const dia=node('li',null,'fixture-day');
+   const cabecera=node('div',null,'fixture-day-heading');
+   cabecera.append(node('h4',grupo.dia),node('span',grupo.partidos.length+(grupo.partidos.length===1?' partido':' partidos'),'fixture-day-count'));
+   const encuentros=node('ul',null,'fixture-matches');
+   for(const p of grupo.partidos){
+    const partido=node('li',null,'fixture-row');
+    const local=node('span',p.local,'fixture-team fixture-home');
+    const visitante=node('span',p.visitante,'fixture-team fixture-away');
+    const centro=node('div',null,'fixture-kickoff');
+    const hora=node(p.inicio?'time':'span',p.hora,'fixture-time');
+    if(p.inicio)hora.setAttribute('datetime',p.inicio);
+    centro.appendChild(hora);
+    if(p.estado){
+     const badge=node('span',p.estado,'fixture-status'+(p.enJuego?' fixture-live':''));
+     centro.appendChild(badge);
+    }
+    partido.append(local,centro,visitante);
+    encuentros.appendChild(partido);
+   }
+   dia.append(cabecera,encuentros);fixtures.appendChild(dia);
+  }
+ }
  function useDraft(){isDraft=true;version=data.borrador?.version||0;cargar(data.borrador?.slots||vacio());message.textContent='';render();}
- function clear(){generation++;ctx=null;data=null;slots=vacio();sobrantes=[];formacion=porDefecto;busy=false;version=0;list.replaceChildren();extras.replaceChildren();extras.hidden=true;controls.hidden=true;fixtures.replaceChildren();status.textContent='';message.textContent='';count.textContent='0 / 11 titulares';positions.textContent='';help.textContent='';draft.hidden=true;save.disabled=true;root.hidden=true;}
+ function clear(){generation++;ctx=null;data=null;slots=vacio();sobrantes=[];formacion=porDefecto;busy=false;version=0;list.replaceChildren();extras.replaceChildren();extras.hidden=true;controls.hidden=true;fixtures.replaceChildren();if(fixtureSummary){fixtureSummary.hidden=true;fixtureSummary.textContent='';}if(fixtureLegend)fixtureLegend.hidden=true;status.textContent='';message.textContent='';count.textContent='0 / 11 titulares';positions.textContent='';help.textContent='';draft.hidden=true;save.disabled=true;root.hidden=true;}
  async function show(){
   clear();root.hidden=false;const c={...contexto()},g=generation;ctx=c;
   if(!c.token||!c.division){status.textContent='No hay equipo disponible.';return;}
@@ -123,10 +183,7 @@ export function crearPanelAlineacion(root,contexto){
    data=result;
    if(data.jornada_id){isDraft=false;version=data.version;cargar(version?data.slots:data.borrador?.slots||data.slots);render();}
    else useDraft();
-   for(const f of data.partidos){
-    const row=node('li',(f.local||'Local pendiente')+' – '+(f.visitante||'Visitante pendiente')+' · '+(f.inicio?fecha.format(new Date(f.inicio)):'Horario pendiente')+' · '+f.estado);fixtures.appendChild(row);
-   }
-   if(!data.partidos.length)fixtures.appendChild(node('li','Aún no hay partidos confirmados en MACROLIGA.'));
+   renderPartidos(data.partidos);
   }catch(e){if(valid(g,c))status.textContent='No se pudo consultar la alineación. Pulsa Actualizar jornada.';}
  }
  form.addEventListener('change',()=>{
