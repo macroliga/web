@@ -177,3 +177,25 @@ No se ha modificado el proyecto ni se han consultado recursos de Comunio Laviana
   permiso y nueve regresiones previas). No se usó ningún PIN real.
 - Entrega de interfaz para el piloto, sin crear/abrir ciclos ni importar
   datos de prueba, no cambiar configuración ni persistencia de Auth.
+
+## Estado visible y actualización PWA v18
+- Verificación de solo lectura en la BD alojada usando transacción read only,
+  rol authenticated y claim local del manager administrador autorizado,
+  sin credenciales ni login real: RPC equipo propio 1, plantilla 0,
+  clasificación 16 con valor y puntos cero, mercado 0, catálogo 0,
+  estado administrativo válido (16, borrador, 70 M€, no inicializado).
+  El claim fue local a la transacción y se hizo rollback.
+- Inicio muestra número real de managers, disponibilidad del catálogo,
+  número de lotes visibles y explicación de que el reparto está pendiente.
+  Usa tres RPC existentes; ninguna escritura, no muestra cifras inventadas.
+  Botón directo de arranque únicamente tras autorización de la API.
+- Versión visible y actualización de la app sin borrar localStorage.
+  HTML obsoleto con JS actual redirige una vez a la versión vigente antes
+  de iniciar Auth (evita dos rotaciones del token). Campos nuevos opcionales
+  para evitar excepciones si la caché mantiene un HTML anterior.
+- 155/155 Node, sintaxis correcta, 13 etapas Chromium móvil con API/Auth
+  ficticias, incluidas liga vacía, catálogo disponible, navegación,
+  actualización explícita y HTML viejo/JS nuevo, sin doble rotación/PIN.
+- Se buscó MACROLIGA en Drive (sin resultados); no existe lote en el
+  directorio local. Catálogo de Comuniazo todavía no importado. No se
+  toca Comunio Laviana ni se crea ningún dato ficticio alojado.

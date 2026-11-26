@@ -30,11 +30,14 @@ test('saldo en cabecera, Mi equipo compacto y datos solo en su vista', () => {
 });
 test('cuatro accesos principales en 2 columnas y barra inferior de cinco', () => {
   assert.equal((html.match(/class="tile tile-/g)||[]).length,4);
-  assert.equal((html.match(/<button type="button" data-view="(home|rules|cup|standings|admin)"/g)||[]).length,5);
+  assert.equal((html.split('<nav class="bottom-nav"')[1].match(/<button type="button" data-view="(home|rules|cup|standings|admin)"/g)||[]).length,5);
   assert.match(styles, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(html, /id="admin-nav" hidden/);
-  assert.match(app, /adminAutorizado=true;adminNav.hidden=false/);
+  assert.match(app, /mostrarAdmin\(true\)/);
+  assert.match(html, /id="admin-home"[^>]+hidden/);
+  assert.match(html, /id="home-manager-count"/);
+  assert.match(html, /id="app-refresh"/);
   assert.match(styles, /env\(safe-area-inset-bottom/);
 });
 test('pantallas pendientes no simulan operaciones activas', () => {
@@ -43,7 +46,7 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v17/);
+  assert.match(worker, /macroliga-pwa-estatica-v18/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);

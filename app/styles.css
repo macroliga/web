@@ -124,3 +124,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 .bottom-nav.has-admin{grid-template-columns:repeat(5,minmax(0,1fr))}
 #team-refresh-status{color:#586e7b;font-size:12px}
+
+.league-status-card{margin:10px 0;background:#fff;padding:12px 13px;border-radius:15px;box-shadow:0 3px 10px #00111f21}
+.league-status-card h2{font-size:15px;margin:0 0 8px}
+.league-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.league-summary button{min-width:0;text-align:left;background:#edf5f6;color:#1d5360;border:0;padding:9px 7px;border-radius:10px;display:grid;gap:2px;min-height:55px}
+.league-summary strong{font-size:15px;overflow-wrap:anywhere}.league-summary small{font-size:11px;color:#526e79}
+#home-league-status{font-size:12px;color:#536b79;margin:9px 0 2px;line-height:1.4}
+#admin-home{margin-top:9px;border:0;background:#117783;color:#fff;width:100%;font-weight:700;border-radius:9px;padding:10px;min-height:42px}
+.release-info{display:flex;justify-content:center;align-items:center;gap:10px;font-size:11px;color:#c0d4df;margin:8px 0 14px}
+.release-info button{border:1px solid #b4c9d380;border-radius:7px;background:transparent;color:inherit;padding:5px 8px;font:inherit}
