@@ -4,67 +4,132 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#082637">
-  <meta name="description" content="MACROLIGA, liga piloto de fútbol fantasy.">
-  <title>MACROLIGA · Piloto</title>
-  <link rel="stylesheet" href="./styles.css">
-  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="description" content="MACROLIGA, fantasy de fútbol. Liga piloto 2026/27.">
+  <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css?v=5">
 </head>
 <body>
-  <main class="shell">
-    <header class="head">
-      <span class="logo" aria-hidden="true">⚽</span>
-      <div class="brand"><h1>MACROLIGA</h1><p>Temporada piloto 2026/27</p></div>
-      <span class="pending">EN PRUEBAS</span>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand-area">
+        <span class="logo" aria-hidden="true">⚽</span>
+        <div class="brand">
+          <h1>MACROLIGA</h1>
+          <p>LIGA PILOTO · 2026/27</p>
+        </div>
+      </div>
+      <div class="top-balance" id="top-balance" hidden aria-label="Saldo de tu equipo">
+        <span>SALDO</span><strong id="header-balance">—</strong>
+      </div>
     </header>
-    <section class="card login-card" aria-labelledby="login-title">
-      <div class="card-head"><h2 id="login-title">Acceso de managers</h2><span id="connection-state" class="tiny"></span></div>
-      <form id="login-form" class="login-form">
-        <label for="manager-select">Entrenador
-          <select id="manager-select" name="entrenador" autocomplete="username" required>
-            <option value="">Selecciona tu entrenador</option>
+
+    <main>
+      <section id="login-view" class="login-view" aria-labelledby="login-title">
+        <div class="login-mark" aria-hidden="true">🏆</div>
+        <h2 id="login-title">¿Quién juega?</h2>
+        <p class="login-subtitle">Elige tu entrenador y escribe su PIN para entrar.</p>
+        <form id="login-form" class="login-form">
+          <label for="manager-select">Tu entrenador</label>
+          <select id="manager-select" name="entrenador" required>
+            <option value="">Selecciona tu nombre</option>
           </select>
-        </label>
-        <label for="password">PIN de 6 cifras
+          <label for="password">PIN de 6 cifras</label>
           <input id="password" name="pin" type="password" autocomplete="current-password"
             inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
             placeholder="••••••" required>
-        </label>
-        <div class="actions"><button type="submit" id="login-button">Entrar</button><button type="button" id="logout-button" hidden>Salir</button></div>
-      </form>
-      <p id="login-message" class="hint" role="status" aria-live="polite">Elige un entrenador histórico e introduce su PIN de prueba.</p>
-    </section>
-    <section class="card team-card" aria-labelledby="team-title">
-      <div class="card-head"><h2 id="team-title">Mi equipo</h2><span id="team-division" class="tiny">Sin iniciar sesión</span></div>
-      <p id="team-name" class="team-name">Tu equipo aparecerá aquí</p>
-      <div class="figures">
-        <div><span>Saldo</span><strong id="team-balance">—</strong></div>
-        <div><span>Valor de plantilla</span><strong id="team-value">—</strong></div>
-        <div><span>Futbolistas</span><strong id="team-players">—</strong></div>
-        <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
+          <button type="submit" id="login-button" class="primary-button">Entrar en MACROLIGA</button>
+        </form>
+        <p id="login-message" class="login-message" role="status" aria-live="polite">
+          Identificación necesaria para consultar tu equipo.
+        </p>
+      </section>
+
+      <div id="private-view" hidden>
+        <section id="home-view" class="page-view" aria-label="Inicio">
+          <button type="button" class="team-shortcut" data-view="team" aria-label="Abrir Mi equipo">
+            <span class="team-jersey" aria-hidden="true">👕</span>
+            <span class="team-shortcut-copy">
+              <small>MI EQUIPO</small>
+              <strong id="team-short-name">Tu equipo</strong>
+            </span>
+            <span class="right-chevron" aria-hidden="true">›</span>
+          </button>
+
+          <section class="features" aria-label="Menús principales">
+            <button type="button" class="tile tile-clauses" data-view="clauses">
+              <span class="tile-icon" aria-hidden="true">🔨</span>
+              <span class="tile-label">CLÁUSULAS</span>
+              <small>En preparación</small>
+            </button>
+            <button type="button" class="tile tile-lineup" data-view="lineup">
+              <span class="tile-icon" aria-hidden="true">👕</span>
+              <span class="tile-label">ALINEACIÓN</span>
+              <small>En preparación</small>
+            </button>
+            <button type="button" class="tile tile-market" data-view="market">
+              <span class="tile-icon" aria-hidden="true">⚽</span>
+              <span class="tile-label">MERCADO</span>
+              <small>En preparación</small>
+            </button>
+            <button type="button" class="tile tile-bad" data-view="bad">
+              <span class="tile-icon" aria-hidden="true">👹</span>
+              <span class="tile-label">EQUIPO MALO</span>
+              <small>En preparación</small>
+            </button>
+          </section>
+
+          <section class="news-card" aria-labelledby="news-title">
+            <div class="news-header">
+              <h2 id="news-title">Noticias</h2>
+              <span>HOY</span>
+            </div>
+            <p>Los movimientos y fichajes aparecerán aquí cuando abramos el mercado piloto.</p>
+          </section>
+        </section>
+
+        <section id="team-view" class="page-view detail-page" aria-labelledby="team-title" hidden>
+          <button type="button" class="back-button" data-view="home">‹ Volver a Inicio</button>
+          <div class="detail-card">
+            <p class="eyebrow">MI EQUIPO · <span id="team-division">División piloto</span></p>
+            <h2 id="team-title">Tu equipo</h2>
+            <div class="figures">
+              <div><span>Saldo</span><strong id="team-balance">—</strong></div>
+              <div><span>Valor plantilla</span><strong id="team-value">—</strong></div>
+              <div><span>Futbolistas</span><strong id="team-players">—</strong></div>
+              <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
+            </div>
+            <div class="squad-section">
+              <h3>Mi plantilla</h3>
+              <ul id="roster-list" aria-live="polite"></ul>
+            </div>
+            <button id="logout-button" type="button" class="logout-button">Salir · Cambiar entrenador</button>
+          </div>
+        </section>
+
+        <section id="section-view" class="page-view detail-page" aria-labelledby="section-title" hidden>
+          <button type="button" class="back-button" data-view="home">‹ Volver a Inicio</button>
+          <div class="detail-card empty-state">
+            <span id="section-icon" class="empty-icon" aria-hidden="true">⚽</span>
+            <h2 id="section-title">Sección en preparación</h2>
+            <p id="section-message">Estamos preparando esta parte del piloto.</p>
+            <span class="status-text">Todavía no hay operaciones disponibles</span>
+          </div>
+        </section>
+
+        <nav class="bottom-nav" aria-label="Navegación principal">
+          <button type="button" data-view="home" class="active" aria-current="page"><span aria-hidden="true">⌂</span><small>Inicio</small></button>
+          <button type="button" data-view="rules"><span aria-hidden="true">📖</span><small>Normas</small></button>
+          <button type="button" data-view="cup"><span aria-hidden="true">🏆</span><small>Copa</small></button>
+          <button type="button" data-view="standings"><span aria-hidden="true">📊</span><small>Clasificación</small></button>
+          <button type="button" data-view="admin"><span aria-hidden="true">⚙</span><small>Admin</small></button>
+        </nav>
       </div>
-      <details class="roster"><summary>Consultar mi plantilla</summary><ul id="roster-list"><li>Inicia sesión para verla.</li></ul></details>
-    </section>
-    <section aria-label="Accesos principales" class="features">
-      <article class="tile tile-clauses"><span aria-hidden="true">🔨</span><h2>CLÁUSULAS</h2><p>Horarios según calendario</p><small>Función pendiente</small></article>
-      <article class="tile tile-lineup"><span aria-hidden="true">👕</span><h2>ALINEACIÓN</h2><p>Once y partidos</p><small>Cuenta atrás pendiente</small></article>
-      <article class="tile tile-market"><span aria-hidden="true">⚽</span><h2>MERCADO</h2><p id="market-status">Consultando horario…</p><small>06:00–01:00 · Operaciones pendientes</small></article>
-      <article class="tile tile-bad"><span aria-hidden="true">👹</span><h2>EQUIPO MALO</h2><p id="bad-status">Consultando horario…</p><small>12:00–00:00 · Operaciones pendientes</small></article>
-    </section>
-    <section class="card news" aria-labelledby="news-title">
-      <div class="card-head"><h2 id="news-title">📰 Noticias</h2><span class="tiny">Traspasos del día</span></div>
-      <p>Los traspasos aparecerán aquí cuando esté conectado el cierre automático del mercado.</p>
-    </section>
-    <nav class="bottom-nav" aria-label="Navegación">
-      <span class="active">⌂ <small>Inicio</small></span>
-      <span>📖 <small>Normas</small></span>
-      <span>🏆 <small>Copa</small></span>
-      <span>📊 <small>Clasificación</small></span>
-      <span>⚙ <small>Admin</small></span>
-    </nav>
-    <p class="prototype-note">Prototipo de desarrollo. No hay mercados ni operaciones activadas.</p>
-  </main>
+    </main>
+    <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
+  </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=5"></script>
 </body>
 </html>
