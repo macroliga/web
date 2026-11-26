@@ -40,6 +40,50 @@ select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 do $$ begin
  if exists(select 1 from public.macroliga_mis_equipos()) or exists(select 1 from public.macroliga_mi_plantilla('00000000-0000-4000-8000-000000000031')) then raise exception 'unlinked identity leak'; end if;
 end $$;
+-- Verify effective direct-table denial, not just RPC filtering.
+do $
+declare rel text;
+begin
+ foreach rel in array array['teams','managers','roster_ownership','players','divisions'] loop
+  begin
+   execute format('select 1 from public.%I limit 1',rel);
+   raise exception 'authenticated direct read unexpectedly allowed: %',rel;
+  exception when insufficient_privilege then null;
+  end;
+ end loop;
+end $;
 reset role;
+set local role anon;
+select set_config('request.jwt.claim.sub','',true);
+select set_config('request.jwt.claims','{"role":"anon"}',true);
+do $
+declare rel text;
+begin
+ foreach rel in array array['teams','managers','roster_ownership','players','divisions'] loop
+  begin
+   execute format('select 1 from public.%I limit 1',rel);
+   raise exception 'anon direct read unexpectedly allowed: %',rel;
+  exception when insufficient_privilege then null;
+  end;
+ end loop;
+ begin
+  perform 1 from public.macroliga_mis_equipos();
+  raise exception 'anon team RPC unexpectedly allowed';
+ exception when insufficient_privilege then null;
+ end;
+ begin
+  perform 1 from public.macroliga_mi_plantilla('00000000-0000-4000-8000-000000000031');
+  raise exception 'anon roster RPC unexpectedly allowed';
+ exception when insufficient_privilege then null;
+ end;
+end $;
+reset role;
+do $
+begin
+ if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='public' and c.relname in ('teams','managers','roster_ownership','players','divisions') and c.relrowsecurity) <> 5 then
+ raise exception 'RLS missing on protected table';
+ end if;
+end $;
 rollback;
 select 'manager isolation assertions passed' as result;
