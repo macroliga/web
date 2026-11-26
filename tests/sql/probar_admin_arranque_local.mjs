@@ -19,6 +19,8 @@ const core='supabase/migrations/202611260008_arranque_combinado_privado.sql';
 const coreRollback='docs/propuestas/20261126_arranque_propietario_rollback.sql';
 const proposal='supabase/migrations/202611260009_arranque_admin_division.sql';
 const rollback='docs/propuestas/20261126_admin_arranque_rollback.sql';
+const target='supabase/migrations/202611260011_reparto_valor_objetivo.sql';
+const targetRollback='docs/propuestas/20261126_reparto_valor_objetivo_rollback.sql';
 const query=async(text,args=[])=> (await db.query(text,args)).rows;
 const counts=async()=> (await query(`select
  (select count(*)::int from public.players) players,
@@ -63,6 +65,7 @@ try {
   await db.exec(await sql(core));await db.exec(await sql(proposal));
   await db.exec(await sql(rollback));await db.exec(await sql(coreRollback));
   await db.exec(await sql(core));await db.exec(await sql(proposal));
+  await db.exec(await sql(target));await db.exec(await sql(targetRollback));await db.exec(await sql(target));
   console.log('PASS instalación/reversión estructural sin uso; 14 migraciones versionadas; auth y función Supabase automática simuladas');
 
   const comp=(await query("insert into public.competitions(code,name) values('MACROLIGA_PILOTO_INVIERNO_2026','Test') returning id"))[0].id;
@@ -170,6 +173,22 @@ try {
   await login(0);
   await assert.rejects(simular('7200000000',{GK:0,DEF:6,MID:6,FWD:3}),/Cuotas/);
   await assert.rejects(simular('7200000000',{GK:2,DEF:5,MID:5,FWD:4}),/plaza libre/);
+  await assert.rejects(simular('7000000000',{GK:2,DEF:5,MID:5,FWD:3},'caja incompatible','2100000000'),/Caja mínima incompatible/);
+  await reset();
+  await db.exec(await sql(targetRollback));
+  await login(0);
+  const oldPlan=await simular('7000000000',{GK:2,DEF:5,MID:5,FWD:3},'algoritmo anterior','1200000000');
+  await reset();await db.exec(await sql(target));await login(0);
+  await assert.rejects(aplicar(oldPlan.previewId),/volver a simular/);
+  const desired=await simular('7000000000',{GK:2,DEF:5,MID:5,FWD:3},'valor objetivo','1200000000');
+  assert.equal(desired.minimumRosterValueCents,'5000000000');
+  assert.equal(desired.maximumRosterValueCents,'5800000000');
+  assert.equal(desired.planVersion,2);
+  assert.equal(desired.allocations.length,16);
+  assert.equal(new Set(desired.allocations.flatMap(x=>x.players.map(p=>p.id))).size,240);
+  assert.ok(desired.allocations.every(x=>BigInt(x.rosterValueCents)>=5000000000n&&BigInt(x.rosterValueCents)<=5800000000n&&BigInt(x.cashCents)>=1200000000n&&BigInt(x.cashCents)+BigInt(x.rosterValueCents)===7000000000n));
+  assert.equal(new Set([...desired.marketPlayers.map(p=>p.id),...desired.allocations.flatMap(t=>t.players.map(p=>p.id))]).size,255);
+  console.log('PASS objetivo 50–58M, caja mínima 12M, 240 futbolistas únicos y 15 libres; dispersión:',desired.rosterSpreadCents);
   const defaultPlan=await simular('7000000000',{GK:2,DEF:5,MID:5,FWD:3},'patrimonio por defecto','0');
   assert.ok(defaultPlan.allocations.every(x=>x.players.length===15&&x.wealthCents==='7000000000'&&BigInt(x.cashCents)>=0n));
   console.log('PASS patrimonio por defecto 70 millones: diferencia',defaultPlan.rosterSpreadCents,'céntimos');
@@ -225,6 +244,8 @@ try {
   for(const role of ['anon','authenticated','service_role','macroliga_runner']) {
     const f=(await query("select has_function_privilege($1,'public.macroliga_admin_aplicar_reparto(uuid,uuid)','execute') allowed,has_function_privilege($1,'public.macroliga_admin_iniciar_todo(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid)','execute') combined,has_function_privilege($1,'app_private.iniciar_todo_propietario(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid)','execute') owner,has_table_privilege($1,'app_private.admin_repartos','SELECT') readable,has_function_privilege($1,'public.macroliga_mercado_visible(uuid)','EXECUTE') market,has_function_privilege($1,'app_private.seleccionar_mercado_variado(uuid,text,uuid[],uuid[])','EXECUTE') selector,has_function_privilege($1,'public.macroliga_clasificacion(uuid)','EXECUTE') standings",[role]))[0];
     assert.deepEqual(f,{allowed:role==='authenticated',combined:role==='authenticated',owner:false,readable:false,market:role==='authenticated',selector:false,standings:role==='authenticated'});
+    const privateTarget=(await query("select has_function_privilege($1,'app_private.admin_simular_reparto_core(uuid,uuid,bigint,jsonb,bigint,text,date)','execute') simular,has_function_privilege($1,'app_private.admin_aplicar_reparto_core(uuid,uuid,uuid)','execute') aplicar",[role]))[0];
+    assert.deepEqual(privateTarget,{simular:false,aplicar:false});
   }
   await login(1);
   const actual=await visible();assert.equal(actual.length,15);assert.ok(actual.every(x=>x.estado==='draft'));
