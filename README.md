@@ -79,6 +79,15 @@ npm run market:dry-run # requiere configuración de lectura segura
 - Preparado `npm run test:acceso-real` para dos cuentas **de ensayo creadas mediante Supabase Auth**, sin exponer contraseñas ni claves privadas. La prueba HTTP completa **aún no se ha ejecutado** porque esas cuentas no están provisionadas.
 - [Procedimiento y límites de la prueba](docs/PRUEBA_ACCESO_REAL_Y_PRIVACIDAD_2026-11-26.md).
 
+## Entrenadores históricos de ensayo (26/11/2026)
+
+Se ha preparado una lista de 16 entrenadores históricos como **alias ficticios** del piloto, y un programa para crear sus cuentas y equipos mediante Supabase Auth oficial, con contraseñas individuales aleatorias.
+
+- Simulación sin cambios: `npm run demo:preview`.
+- Alta real desde equipo administrativo seguro: `npm run demo:create` (exige credencial privada de MACROLIGA y confirmación expresa).
+- [Procedimiento completo](docs/16_ENTRENADORES_HISTORICOS_PILOTO_2026-11-26.md).
+- **Todavía no se han creado las cuentas Auth**: el conector actual no proporciona administración de usuarios ni una credencial de servicio, y no se introducirán contraseñas manualmente en tablas internas.
+
 ## Pendiente antes de dar acceso a managers reales
 
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
