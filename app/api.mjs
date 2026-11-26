@@ -4,16 +4,18 @@ const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo']);
 
 export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(supabaseUrl || '')
-      || !anonKey || typeof anonKey !== 'string') {
+      || !anonKey || typeof anonKey !== 'string' || anonKey.startsWith('sb_secret_')) {
     throw new Error('Configuracion publica de Supabase incompleta');
   }
   const base = supabaseUrl.replace(/\/$/, '');
 
   async function solicitar(path, body, bearer) {
     const headers = {
-      apikey: anonKey, 'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + (bearer || anonKey)
+      apikey: anonKey, 'Content-Type': 'application/json'
     };
+    // Las claves sb_publishable_ son publicas, pero NO son JWT de usuario.
+    // Auth se autentica con apikey; las RPC llevan solo el JWT personal.
+    if (bearer) headers.Authorization = 'Bearer ' + bearer;
     const response = await fetchImpl(base + path, {
       method: 'POST', headers, body: JSON.stringify(body)
     });
