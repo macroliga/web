@@ -1,4 +1,4 @@
-// Consultas exclusivamente de lectura, sin conservar datos al salir.
+// Mercado: lecturas y operaciones autenticadas; no se conservan datos al salir.
 const normalizar=value=>String(value??'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('es');
 const posiciones={GK:'Portero',DEF:'Defensa',MID:'Centrocampista',FWD:'Delantero'};
 const tipos={market:'Mercado',manager_sale:'Entre managers',computer_sale:'Venta a Computer',bad_team_sale:'Equipo Malo',clause:'Cláusula',bad_team_clause:'Cláusula Equipo Malo',admin_correction:'Ajuste administrativo'};
@@ -63,7 +63,7 @@ export async function cargarCatalogo(call,valid=()=>true){
   }
   throw Error('Catálogo demasiado grande; no se presenta un resultado parcial');
 }
-export function crearPanelCatalogo(root,contexto){
+export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
   if(!root)return null;
   const doc=root.ownerDocument,el=id=>root.querySelector('#'+id);
   const list=el('catalog-list'),status=el('catalog-status'),search=el('catalog-search'),owner=el('catalog-owner'),club=el('catalog-club');
@@ -71,6 +71,10 @@ export function crearPanelCatalogo(root,contexto){
   const prev=el('catalog-prev'),next=el('catalog-next'),histList=el('history-list'),histStatus=el('history-status'),histMore=el('history-more');
   const marketView=el('market-current-view'),marketTab=el('market-current-tab'),marketList=el('market-current-list'),marketStatus=el('market-current-status');
   const playersView=el('market-players-view'),historyView=el('market-history-view'),playersTab=el('market-players-tab'),historyTab=el('market-history-tab');
+  const salesView=el('market-sales-view'),salesTab=el('market-sales-tab'),salesStatus=el('market-sales-status'),salesControls=el('market-sales-controls'),salesList=el('market-sales-list'),offersList=el('market-offers-list'),actionStatus=el('market-action-status');
+  let operations=null, marketRows=[],busy=false, tabActual='market',jugadorVenta=null;
+  const formatDate=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',dateStyle:'short',timeStyle:'short'});
+  const node=(tag,txt)=>{const n=doc.createElement(tag);if(txt!=null)n.textContent=txt;return n;};
   let generation=0,rows=[],loaded=false,page=0,history=[],historyLoaded=false,historyBusy=false,historyDone=false,ctx=null;
   const valid=(g,c)=>g===generation&&contexto()?.division===c?.division&&contexto()?.identity===c?.identity&&Boolean(contexto()?.token);
   const call=(c,name,params)=>{
@@ -133,41 +137,120 @@ export function crearPanelCatalogo(root,contexto){
     }catch(err){if(valid(g,c)){histStatus.textContent='No se pudo consultar el historial. Puedes reintentar.';histMore.hidden=false;}}
     finally{if(valid(g,c)){historyBusy=false;histMore.disabled=false;}}
   }
+  function actionMessage(text){if(actionStatus)actionStatus.textContent=text;if(salesStatus&&tabActual==='sales')salesStatus.textContent=text;}
+  async function operate(name,args){
+    const c=ctx,g=generation,fresh=contexto();
+    if(!c||busy||!valid(g,c))return;
+    busy=true;renderMarket();renderSales();actionMessage('Enviando operación…');
+    try{
+      const result=await c.client.operar(name,args,fresh.token);
+      if(!valid(g,c))return;
+      if(!result)throw Error('Operación no confirmada');
+      onChange();historyLoaded=false;history=[];historyDone=false;
+      await loadMarket(c,g);
+      if(valid(g,c)){busy=false;renderMarket();renderSales();actionMessage('Operación confirmada.');}
+    }catch(e){if(valid(g,c)){await loadMarket(c,g);if(valid(g,c)){busy=false;renderMarket();renderSales();actionMessage(e.operationMessage||'No se pudo confirmar la operación. Comprueba el estado actualizado.');}}}
+    finally{if(valid(g,c))busy=false;}
+  }
+  function button(text,enabled,fn){
+    const b=node('button',text);b.type='button';b.disabled=busy||!enabled;b.addEventListener('click',()=>{if(!b.disabled)fn();});return b;
+  }
+  function priceControl(parent,text,min,enabled,fn){
+    const wrap=node('div');wrap.className='market-operation';const label=node('label','Importe en euros · mínimo '+euros(min));
+    const input=node('input');input.type='text';input.inputMode='decimal';input.placeholder='Ej. 2500000';input.disabled=busy||!enabled;
+    const n=BigInt(min);input.value=(n/100n).toString()+(n%100n?','+(n%100n).toString().padStart(2,'0'):'');
+    label.appendChild(input);wrap.appendChild(label);wrap.appendChild(button(text,enabled,()=>{
+      try{const amount=limiteValor(input.value);if(amount===null||amount<BigInt(min))throw Error('El importe debe alcanzar el mínimo');fn(amount.toString());}
+      catch(e){actionMessage(e.message);}
+    }));parent.appendChild(wrap);
+  }
+  function renderMarket(){
+    marketList.replaceChildren();
+    const result=marketRows;
+    if(!result.length)return;
+    const state=result[0].estado;
+    const counts=Object.keys(posiciones).map(p=>result.filter(r=>r.posicion===p).length);
+    const enabled=operations?.pujas_abiertas===true&&state==='open';
+    marketStatus.textContent=(state==='preview'?'Vista previa · sin pujas':enabled?'Mercado abierto':state==='draft'?'Mercado preparado · no abierto':'Mercado no disponible para pujas')+' · '+result.length+' jugadores · '+counts.map((n,i)=>n+' '+['POR','DEF','MED','DEL'][i]).join(' · ')+(operations?.abre&&!enabled?' · Apertura prevista '+formatDate.format(new Date(operations.abre)):'')+(enabled&&operations?.cierra?' · Cierre '+formatDate.format(new Date(operations.cierra)):'');
+    for(const r of result){
+      const li=node('li'),name=node('strong',r.nombre_jugador),info=node('span',[posiciones[r.posicion],r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts',state==='open'?'Día '+r.dia_mercado:''].filter(Boolean).join(' · '));
+      li.appendChild(name);li.appendChild(info);
+      const lot=operations?.lotes?.find(x=>x.jugador_id===r.jugador_id);
+      if(lot){
+        if(lot.puja_id){li.appendChild(node('span','Mi puja: '+euros(lot.importe)));li.appendChild(button('Retirar mi puja',enabled,()=>void operate('macroliga_retirar_puja',{p_puja_id:lot.puja_id})));}
+        else priceControl(li,'Pujar',lot.minimo,enabled,amount=>void operate('macroliga_presentar_puja',{p_lote_id:lot.lote_id,p_importe_centimos:amount}));
+      }
+      marketList.appendChild(li);
+    }
+  }
+  function renderSales(){
+    if(!salesControls)return;
+    salesControls.replaceChildren();salesList.replaceChildren();offersList.replaceChildren();
+    if(!operations){salesStatus.textContent='Operaciones todavía no disponibles.';return;}
+    const enabled=operations.ventas_abiertas===true;
+    if(!busy)salesStatus.textContent=enabled?'Ventas abiertas. Las ofertas no reservan saldo; se valida de nuevo al aceptar.':'Ventas preparadas · todavía no habilitadas por el servidor.';
+    const op=(p_accion,p_objeto,p_importe_centimos=null)=>void operate('macroliga_operar_venta',{p_division_id:ctx.division,p_accion,p_objeto,p_importe_centimos});
+    const select=node('select');select.disabled=busy||!enabled;
+    const listable=operations.plantilla||[];
+    for(const p of listable){select.appendChild(option(p.id,p.nombre+' · mín. '+euros(p.minimo)));}
+    if(jugadorVenta&&listable.some(p=>p.id===jugadorVenta))select.value=jugadorVenta;
+    const label=node('label','Poner un jugador de mi plantilla en venta');label.appendChild(select);salesControls.appendChild(label);
+    const price=node('div');salesControls.appendChild(price);
+    const showPrice=()=>{price.replaceChildren();const p=listable.find(x=>x.id===select.value)||listable[0];if(p)priceControl(price,'Poner en venta',p.minimo,enabled,amount=>op('listar',p.id,amount));};
+    select.addEventListener('change',()=>{jugadorVenta=select.value;showPrice();});showPrice();
+    for(const s of operations.anuncios||[]){
+      const li=node('li');li.appendChild(node('strong',s.jugador));li.appendChild(node('span',s.vendedor+' · '+posiciones[s.posicion]+' · '+euros(s.precio??s.minimo)));
+      if(s.propia)li.appendChild(button('Retirar anuncio',true,()=>op('cancelar',s.id)));
+      else if(s.minimo!=null&&!(operations.ofertas||[]).some(o=>o.enviada&&o.anuncio===s.id))priceControl(li,'Enviar oferta',s.minimo,enabled,amount=>op('ofertar',s.id,amount));
+      salesList.appendChild(li);
+    }
+    for(const o of operations.ofertas||[]){
+      const li=node('li');li.appendChild(node('strong',o.jugador+' · '+euros(o.importe)));
+      li.appendChild(node('span',o.enviada?'Enviada por mí':'Recibida de '+o.comprador));
+      li.appendChild(button(o.enviada?'Retirar oferta':'Aceptar venta',o.enviada||enabled,()=>op(o.enviada?'retirar':'aceptar',o.id)));offersList.appendChild(li);
+    }
+    if(!salesList.children.length)salesList.appendChild(node('li','Todavía no hay jugadores en venta.'));
+    if(!offersList.children.length)offersList.appendChild(node('li','Todavía no tienes ofertas pendientes.'));
+  }
   async function loadMarket(c,g){
     marketStatus.textContent='Consultando mercado…';
     try{
       const result=await call(c,'macroliga_mercado_visible',{});
       if(!valid(g,c))return;
       if(!Array.isArray(result)||result.length>15||new Set(result.map(r=>r.jugador_id)).size!==result.length)throw Error('Respuesta inválida');
-      marketList.replaceChildren();
-      if(!result.length){marketStatus.textContent='Todavía no hay mercado preparado ni abierto.';return;}
-      const state=result[0].estado;
-      if(!['preview','draft','open'].includes(state)||result.some(r=>r.estado!==state))throw Error('Estado incoherente');
-      const counts=Object.keys(posiciones).map(p=>result.filter(r=>r.posicion===p).length);
-      if((state==='preview'||state==='draft')&&(result.length!==15||counts.some(n=>n===0)))throw Error('Mercado incompleto');
-      marketStatus.textContent=(state==='preview'?'Vista previa · reservados para el reparto · sin pujas':state==='draft'?'Mercado preparado · no abierto':'Mercado abierto · consulta')+' · '+result.length+' jugadores · '+counts.map((n,i)=>n+' '+['POR','DEF','MED','DEL'][i]).join(' · ');
-      for(const r of result){
-        const li=doc.createElement('li'),name=doc.createElement('strong'),info=doc.createElement('span');
-        name.textContent=r.nombre_jugador;
-        info.textContent=[posiciones[r.posicion],r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts',state==='open'?'Día '+r.dia_mercado:''].filter(Boolean).join(' · ');
-        li.appendChild(name);li.appendChild(info);marketList.appendChild(li);
+      if(result.length){
+        const state=result[0].estado;
+        if(!['preview','draft','open'].includes(state)||result.some(r=>r.estado!==state))throw Error('Estado incoherente');
+        const counts=Object.keys(posiciones).map(p=>result.filter(r=>r.posicion===p).length);
+        if((state==='preview'||state==='draft')&&(result.length!==15||counts.some(n=>n===0)))throw Error('Mercado incompleto');
       }
-    }catch(err){if(valid(g,c))marketStatus.textContent='No se pudo consultar el mercado. No se admite ninguna puja desde esta vista.';}
+      marketRows=result;operations=null;
+      if(!result.length)marketStatus.textContent='Todavía no hay mercado preparado ni abierto.';
+      renderMarket();
+      // Los importes ajenos nunca llegan al navegador. Si la pasarela falla,
+      // el catálogo sigue disponible, pero las acciones permanecen bloqueadas.
+      if(!salesView)return;
+      const o=await call(c,'macroliga_operaciones_mercado',{});
+      if(!valid(g,c))return;
+      if(!o||!Array.isArray(o.lotes)||!Array.isArray(o.plantilla)||!Array.isArray(o.ofertas)||!Array.isArray(o.anuncios))throw Error('Respuesta inválida');
+      operations=o;renderMarket();renderSales();
+    }catch(err){if(valid(g,c)){operations=null;renderMarket();renderSales();if(!marketRows.length)marketStatus.textContent='No se pudo consultar el mercado.';actionMessage('No se han podido consultar las operaciones; no se permiten nuevas pujas.');}}
   }
   function tab(name){
-    const h=name==='history',m=name==='market',p=name==='players';
-    marketView.hidden=!m;playersView.hidden=!p;historyView.hidden=!h;
-    marketTab.setAttribute('aria-pressed',String(m));playersTab.setAttribute('aria-pressed',String(p));historyTab.setAttribute('aria-pressed',String(h));
+    tabActual=name;
+    const h=name==='history',m=name==='market',p=name==='players',s=name==='sales';
+    marketView.hidden=!m;playersView.hidden=!p;historyView.hidden=!h;if(salesView)salesView.hidden=!s;
+    marketTab.setAttribute('aria-pressed',String(m));playersTab.setAttribute('aria-pressed',String(p));historyTab.setAttribute('aria-pressed',String(h));salesTab?.setAttribute('aria-pressed',String(s));
     if(h&&!historyLoaded)void loadHistory();
   }
   function clear(){
-    generation++;rows=[];loaded=false;page=0;history=[];historyLoaded=false;historyBusy=false;historyDone=false;ctx=null;
+    generation++;jugadorVenta=null;operations=null;marketRows=[];busy=false;if(actionStatus)actionStatus.textContent='';if(salesStatus)salesStatus.textContent='';salesControls?.replaceChildren();salesList?.replaceChildren();offersList?.replaceChildren();rows=[];loaded=false;page=0;history=[];historyLoaded=false;historyBusy=false;historyDone=false;ctx=null;
     list.replaceChildren();histList.replaceChildren();marketList.replaceChildren();marketStatus.textContent='';status.textContent='';histStatus.textContent='';histMore.hidden=true;prev.disabled=true;next.disabled=true;
     for(const input of [search,position,minPoints,maxPoints,minValue,maxValue])input.value='';
     selectors();sort.value='name';tab('market');root.hidden=true;
   }
-  async function show(){
-    clear();root.hidden=false;const c={...contexto()},g=generation;ctx=c;
+  async function show(initialTab='market',jugador=null){
+    clear();jugadorVenta=jugador;root.hidden=false;tab(initialTab);const c={...contexto()},g=generation;ctx=c;
     if(!c.division||!c.token){status.textContent='Catálogo no disponible.';return;}
     status.textContent='Consultando jugadores…';
     void loadMarket(c,g);
@@ -184,6 +267,7 @@ export function crearPanelCatalogo(root,contexto){
   next.addEventListener('click',()=>{page++;render();});
   marketTab.addEventListener('click',()=>tab('market'));
   playersTab.addEventListener('click',()=>tab('players'));historyTab.addEventListener('click',()=>tab('history'));
+  salesTab?.addEventListener('click',()=>tab('sales'));
   histMore.addEventListener('click',()=>void loadHistory());
   el('catalog-reset').addEventListener('click',()=>{for(const x of [search,club,position,minPoints,maxPoints,minValue,maxValue])x.value='';owner.value='all';sort.value='name';changed();});
   return {show,clear};

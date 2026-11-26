@@ -30,6 +30,15 @@ class Auth:
         self.empty = True
         self.admin_allowed = False
         self.initialized = False
+        self.market_open = False
+        self.bid = None
+        self.lineup_version = 0
+        self.official_version = 0
+        self.official_slots = [None]*11
+        self.confirmed_round = False
+        self.lineup_open = True
+        self.lineup_slots = [None]*11
+        self.listing = None
 
     def session(self):
         self.current = f'fake{self.password_calls:04d}{self.refresh_calls:04d}'
@@ -74,12 +83,46 @@ class Auth:
                 'jugadores':1,'margen_pujas_centimos':500000}])
         if path.endswith('macroliga_plantilla_equipo'):
             assert body == {'p_equipo_id':'ficticio'}
-            return respond([{'nombre_jugador':'Futbolista ficticio','posicion':'DEL','club':'Prueba',
+            return respond([{'jugador_id':'p1','nombre_jugador':'Futbolista ficticio','posicion':'DEL','club':'Prueba',
                              'valor_mercado_centimos':1000000}])
         if path.endswith('macroliga_mercado_visible'):
             assert body == {'p_division_id':'division-prueba'}
             if self.empty: return respond([])
-            return respond([{'jugador_id':f'm{i}','nombre_jugador':f'Ficticio {i}','posicion':pos,'club':'Club ficticio','valor_mercado_centimos':'1000000','puntos_acumulados':i,'estado':'preview'} for i,pos in enumerate(['GK']*2+['DEF']*5+['MID']*5+['FWD']*3)])
+            return respond([{'jugador_id':f'm{i}','nombre_jugador':f'Ficticio {i}','posicion':pos,'club':'Club ficticio','valor_mercado_centimos':'1000000','puntos_acumulados':i,'estado':'open' if self.market_open else 'draft'} for i,pos in enumerate(['GK']*2+['DEF']*5+['MID']*5+['FWD']*3)])
+        if path.endswith('macroliga_operaciones_mercado'):
+            assert body == {'p_division_id':'division-prueba'}
+            return respond({'pujas_abiertas':self.market_open,'ventas_abiertas':self.market_open,
+                'lotes':[{'jugador_id':'m0','lote_id':'lot1','minimo':'1000000','puja_id':'bid1' if self.bid else None,'importe':self.bid}],
+                'plantilla':[{'id':'p1','nombre':'Portero ficticio','minimo':'130000000'}],
+                'anuncios':[{'id':'listing1','jugador':'Portero ficticio','vendedor':'Equipo ficticio','posicion':'GK','propia':True,'precio':self.listing,'minimo':'130000000'}] if self.listing else [],
+                'ofertas':[]})
+        if path.endswith('macroliga_presentar_puja'):
+            assert self.market_open and body == {'p_lote_id':'lot1','p_importe_centimos':'1000000'}
+            self.bid=body['p_importe_centimos'];return respond('bid1')
+        if path.endswith('macroliga_retirar_puja'):
+            assert body=={'p_puja_id':'bid1'} and self.bid
+            self.bid=None;return respond(True)
+        if path.endswith('macroliga_operar_venta'):
+            assert self.market_open and body['p_division_id']=='division-prueba'
+            if body['p_accion']=='listar':
+                assert body['p_objeto']=='p1' and body['p_importe_centimos']=='130000000'
+                self.listing=body['p_importe_centimos']
+            elif body['p_accion']=='cancelar':
+                assert body['p_objeto']=='listing1';self.listing=None
+            else: raise AssertionError('Acción inesperada')
+            return respond('listing1')
+        if path.endswith('macroliga_estado_alineacion'):
+            assert body == {'p_division_id':'division-prueba'}
+            return respond({'jornada_id':'round14' if self.confirmed_round else None,'numero':14 if self.confirmed_round else None,'limite':'2026-11-27T20:00:00Z' if self.confirmed_round else None,'editable':self.confirmed_round and self.lineup_open,'plantilla':[{'id':'p1','nombre':'Portero ficticio','posicion':'GK','club':'Prueba','activo':True}],
+                'partidos':[{'local':'Club A','visitante':'Club B','inicio':'2026-11-27T20:00:00Z','estado':'TIMED'}] if self.confirmed_round else [],'slots':self.official_slots,'version':self.official_version,'borrador':{'version':self.lineup_version,'slots':self.lineup_slots} if self.lineup_version else None})
+        if path.endswith('macroliga_guardar_alineacion'):
+            assert body['p_division_id']=='division-prueba'
+            assert body['p_slots']==['p1']+[None]*10
+            if body['p_jornada_id']=='round14':
+                assert self.lineup_open and body['p_version']==self.official_version
+                self.official_slots=body['p_slots'];self.official_version+=1;return respond(self.official_version)
+            assert body['p_jornada_id'] is None and body['p_version']==self.lineup_version
+            self.lineup_slots=body['p_slots'];self.lineup_version+=1;return respond(self.lineup_version)
         if path.endswith('macroliga_catalogo_division'):
             assert body['p_division_id']=='division-prueba' and body['p_despues'] is None and body['p_limite'] in (1,250)
             if self.empty:return respond([])
@@ -125,8 +168,8 @@ def run(source):
             def do_GET(self):
                 # HTML obsoleto en primera navegación, módulo actual; el
                 # parámetro de versión devuelve el HTML vigente.
-                if self.path.startswith('/app/?stale=1') and 'release=19' not in self.path:
-                    old=(web/'app/index.html').read_text().replace('data-release="19"','data-release="18"').replace('app.js?v=19','app.js?v=18')
+                if self.path.startswith('/app/?stale=1') and 'release=21' not in self.path:
+                    old=(web/'app/index.html').read_text().replace('data-release="21"','data-release="18"').replace('app.js?v=21','app.js?v=18')
                     body=old.encode()
                     self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
                     return
@@ -176,6 +219,54 @@ def run(source):
                 page.locator('[data-view="market"]').first.click()
                 expect(page.locator('#market-current-list li')).to_have_count(15)
                 expect(page.locator('#market-current-status')).to_contain_text('2 POR · 5 DEF · 5 MED · 3 DEL')
+                expect(page.get_by_role('button',name='Pujar',exact=True)).to_be_disabled()
+                page.click('#market-sales-tab')
+                expect(page.get_by_role('button',name='Poner en venta',exact=True)).to_be_disabled()
+                page.locator('.bottom-nav [data-view="home"]').click()
+                page.locator('[data-view="team"]').first.click()
+                page.locator('.roster-market-button').first.click()
+                expect(page.locator('#market-sales-view')).to_be_visible()
+                expect(page.get_by_role('button',name='Poner en venta',exact=True)).to_be_disabled()
+                auth.market_open=True
+                page.locator('.bottom-nav [data-view="home"]').click()
+                page.locator('[data-view="market"]').first.click()
+                page.get_by_role('button',name='Pujar',exact=True).click()
+                expect(page.get_by_role('button',name='Retirar mi puja')).to_be_visible()
+                page.get_by_role('button',name='Retirar mi puja').click()
+                expect(page.get_by_role('button',name='Pujar',exact=True)).to_be_enabled()
+                page.click('#market-sales-tab')
+                page.get_by_role('button',name='Poner en venta',exact=True).click()
+                expect(page.get_by_role('button',name='Retirar anuncio',exact=True)).to_be_visible()
+                page.get_by_role('button',name='Retirar anuncio',exact=True).click()
+                expect(page.locator('#market-sales-list')).to_contain_text('Todavía no hay jugadores')
+                auth.market_open=False
+                page.locator('.bottom-nav [data-view="home"]').click()
+                page.locator('[data-view="lineup"]').first.click()
+                expect(page.locator('#lineup-slots select')).to_have_count(11)
+                page.locator('#lineup-slots select').first.select_option('p1')
+                expect(page.locator('#lineup-count')).to_contain_text('1 / 11')
+                page.click('#lineup-save')
+                expect(page.locator('#lineup-message')).to_contain_text('Borrador guardado')
+                page.locator('.bottom-nav [data-view="home"]').click()
+                page.locator('[data-view="lineup"]').first.click()
+                expect(page.locator('#lineup-slots select').first).to_have_value('p1')
+                private(page)
+                assert auth.password_calls == 1
+                auth.confirmed_round=True
+                page.click('#lineup-reload')
+                expect(page.locator('#lineup-status')).to_contain_text('Jornada 14')
+                expect(page.locator('#lineup-fixtures')).to_contain_text('Club A')
+                expect(page.locator('#lineup-slots select').first).to_have_value('p1')
+                page.click('#lineup-save')
+                expect(page.locator('#lineup-message')).to_contain_text('Alineación guardada para la jornada 14')
+                auth.lineup_open=False
+                page.click('#lineup-reload')
+                expect(page.locator('#lineup-save')).to_be_disabled()
+                private(page)
+                assert auth.password_calls == 1
+                print('PASS puja, retirada, venta, retirada de anuncio, borrador y alineación oficial cerrada con RPC ficticias',flush=True)
+                page.locator('.bottom-nav [data-view="home"]').click()
+                page.locator('[data-view="market"]').first.click()
                 page.click('#market-players-tab')
                 expect(page.locator('#catalog-status')).to_contain_text('2 de 2 jugadores')
                 page.fill('#catalog-search','alvaro')
@@ -237,8 +328,8 @@ def run(source):
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v19'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v19").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v21'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v21").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)
@@ -264,12 +355,12 @@ def run(source):
                 calls=auth.password_calls
                 page.click('#app-refresh')
                 private(page)
-                assert auth.password_calls==calls and 'release=19' in page.url
+                assert auth.password_calls==calls and 'release=21' in page.url
                 assert_saved(page)
-                print('PASS actualización manual v19 conserva acceso y sesión',flush=True)
+                print('PASS actualización manual v21 conserva acceso y sesión',flush=True)
                 before_refresh=auth.refresh_calls
                 page.goto(url+'?stale=1',wait_until='domcontentloaded')
-                page.wait_for_url('**release=19')
+                page.wait_for_url('**release=21')
                 private(page)
                 assert auth.password_calls==calls and auth.refresh_calls==before_refresh+1
                 assert_saved(page)

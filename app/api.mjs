@@ -3,7 +3,8 @@
 import { refreshValido } from './session.mjs?v=10';
 
 const ADMIN = new Set(['macroliga_admin_arranque_estado','macroliga_admin_importar_catalogo','macroliga_admin_simular_reparto','macroliga_admin_aplicar_reparto','macroliga_admin_iniciar_todo']);
-const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo', 'macroliga_catalogo_division', 'macroliga_historial_traspasos','macroliga_mercado_visible','macroliga_clasificacion']);
+const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo', 'macroliga_catalogo_division', 'macroliga_historial_traspasos','macroliga_mercado_visible','macroliga_clasificacion','macroliga_estado_alineacion','macroliga_operaciones_mercado']);
+const OPERACIONES = new Set(['macroliga_presentar_puja','macroliga_retirar_puja','macroliga_operar_venta','macroliga_guardar_alineacion']);
 
 function extraerSesion(data) {
   if (!data?.access_token || !refreshValido(data?.refresh_token)) {
@@ -40,6 +41,8 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
         : 'La consulta no se pudo completar (' + response.status + ').');
       error.status = response.status;
       if (path.startsWith('/rest/v1/rpc/macroliga_admin_') && data?.code === 'P0001' && typeof data.message === 'string') error.adminMessage = data.message.slice(0, 300);
+      if (path.startsWith('/rest/v1/rpc/') && OPERACIONES.has(path.split('/').at(-1)) &&
+        ['P0001','22023','42501','23505'].includes(data?.code) && typeof data.message === 'string') error.operationMessage = data.message.slice(0, 240);
       error.code = data?.error_code || data?.code || data?.error;
       throw error;
     }
@@ -82,6 +85,10 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
       if (!LECTURAS.has(nombre)) throw new Error('Operacion no permitida por el cliente');
       if (!token) throw new Error('Debes iniciar sesion');
       return solicitar('/rest/v1/rpc/' + nombre, parametros || {}, token);
+    },
+    async operar(nombre, parametros, token) {
+      if (!OPERACIONES.has(nombre) || !token) throw new Error('Operación no permitida');
+      return solicitar('/rest/v1/rpc/' + nombre, parametros, token);
     },
     async administrar(nombre, parametros, token) {
       if (!ADMIN.has(nombre) || !token || !parametros?.p_division) throw new Error('Operación administrativa no permitida');

@@ -14,6 +14,7 @@ class Elemento {
   addEventListener(name, fn) { this.events.set(name, fn); }
   dispatch(name, event = {}) { return this.events.get(name)?.({preventDefault(){}, ...event}); }
   appendChild(node) { this.children.push(node); }
+  append(...nodes) { this.children.push(...nodes); }
   replaceChildren() { this.children = []; }
   setAttribute() {}
   removeAttribute() {}
@@ -24,7 +25,7 @@ const ids = ['login-view','private-view','login-form','manager-select','password
   'remember-pin','login-button','login-message','team-view','home-view','section-view','top-balance',
   'session-recovery','retry-session','prototype-note','section-icon','section-title','section-message',
   'team-title','team-short-name','team-division','header-balance','team-balance','team-value',
-  'team-players','team-capacity','team-wealth','home-wealth','team-refresh-status','admin-nav','roster-list','login-subtitle','logout-button','forget-session'];
+  'team-players','team-capacity','team-wealth','home-wealth','team-refresh-status','admin-nav','roster-list','roster-total','login-subtitle','logout-button','forget-session'];
 function entorno() {
   const data = new Map();
   const storage = {

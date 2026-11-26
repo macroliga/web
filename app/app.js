@@ -1,6 +1,7 @@
-import { crearCliente } from './api.mjs?v=16';
+import { crearCliente } from './api.mjs?v=21';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
-import { crearPanelCatalogo } from './catalogo.mjs?v=14';
+import { crearPanelCatalogo } from './catalogo.mjs?v=21';
+import { crearPanelAlineacion } from './alineacion.mjs?v=21';
 import { crearPanelAdmin } from './admin.mjs?v=17';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
@@ -27,7 +28,8 @@ const nav = document.querySelector('.bottom-nav');
 
 const SECCIONES = Object.freeze({
   clauses: ['🔨', 'Cláusulas', 'Las cláusulas estarán disponibles cuando termine la puesta a punto del piloto.'],
-  lineup: ['👕', 'Alineación', 'Aquí podrás preparar tu once y consultar los partidos. Todavía no hay jornadas activadas.'],
+  lineup: ['👕', 'Alineación', 'Prepara tu once y consulta los partidos.'],
+  sales: ['⚽', 'Mercado', 'Gestiona tus ventas y ofertas.'],
   market: ['⚽', 'Mercado', 'Las pujas y los fichajes aparecerán aquí cuando activemos el mercado del piloto.'],
   bad: ['👹', 'Equipo Malo', 'Las compras y las cláusulas especiales del Equipo Malo todavía no están activadas.'],
   rules: ['📖', 'Normas', 'Las normas de MACROLIGA se publicarán aquí antes del inicio de la competición.'],
@@ -53,14 +55,15 @@ const note = el('prototype-note');
 const NOTA_NORMAL = note.textContent;
 const storage = (() => { try { return window.localStorage; } catch { return null; } })();
 
-const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
+const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();});
+const panelAlineacion = crearPanelAlineacion(el('lineup-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();});
 
 function aviso(texto) {
   loginMessage.textContent = texto;
 }
-function cambiarVista(nombre) {
+function cambiarVista(nombre, jugadorVenta=null) {
   if (!token) return;
   if (nombre==='admin'&&!adminAutorizado) return;
   vistaActual=nombre;
@@ -82,17 +85,18 @@ function cambiarVista(nombre) {
   }
   if (panelAdmin) {
     const placeholder = el('section-placeholder');
-    placeholder.hidden = nombre === 'admin' || (nombre === 'standings' && Boolean(panelClasificacion));
+    placeholder.hidden = ['admin','market','sales','lineup'].includes(nombre) || (nombre === 'standings' && Boolean(panelClasificacion));
     placeholder.classList.toggle('market-summary', nombre === 'market');
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
-  if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();
+  if (nombre === 'market'||nombre==='sales') void panelCatalogo?.show(nombre==='sales'?'sales':'market',jugadorVenta); else panelCatalogo?.clear();
+  if (nombre==='lineup') void panelAlineacion?.show(); else panelAlineacion?.clear();
   if (nombre === 'standings') void panelClasificacion?.show(); else panelClasificacion?.clear();
   if (nombre==='team'||nombre==='home') void actualizarEquipo();
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
+  divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear(); panelAlineacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity']) {
     if(el(id))el(id).textContent = '—';
@@ -184,6 +188,10 @@ function pintarPlantilla(jugadores) {
       vender.disabled = true;
       vender.title = 'La venta al Equipo Malo aún no está activada';
       acciones.appendChild(vender);
+      if(jugador.jugador_id){
+        const mercado=hacer('button','roster-market-button','Poner en venta');
+        mercado.type='button';mercado.addEventListener('click',()=>cambiarVista('sales',jugador.jugador_id));acciones.appendChild(mercado);
+      }
       fila.append(descripcion, acciones);
       bloque.appendChild(fila);
     }
@@ -487,14 +495,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='20')return false;
-  url.searchParams.set('release','20');
+  if(!manual&&url.searchParams.get('release')==='21')return false;
+  url.searchParams.set('release','21');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='20'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='21'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.

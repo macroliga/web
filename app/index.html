@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-release="20">
+<html lang="es" data-release="21">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=20">
+  <link rel="stylesheet" href="./styles.css?v=21">
 </head>
 <body>
   <div class="shell">
@@ -80,12 +80,12 @@
             <button type="button" class="tile tile-lineup" data-view="lineup">
               <span class="tile-icon" aria-hidden="true">👕</span>
               <span class="tile-label">ALINEACIÓN</span>
-              <small>En preparación</small>
+              <small>Prepara tu once</small>
             </button>
             <button type="button" class="tile tile-market" data-view="market">
               <span class="tile-icon" aria-hidden="true">⚽</span>
               <span class="tile-label">MERCADO</span>
-              <small>Jugadores e historial</small>
+              <small>Pujas, ventas y jugadores</small>
             </button>
             <button type="button" class="tile tile-bad" data-view="bad">
               <span class="tile-icon" aria-hidden="true">👹</span>
@@ -129,7 +129,7 @@
             </section>
             <div class="squad-section">
               <div class="team-section-heading"><h3>⚽ Mi plantilla</h3><span id="roster-total" class="roster-total">0 / 16</span></div>
-              <p class="team-sale-notice">La venta inmediata al Equipo Malo y la puesta en mercado son operaciones diferentes. Se habilitarán cuando el servidor permita realizarlas con seguridad.</p>
+              <p class="team-sale-notice">Gestiona tus futbolistas en <button type="button" class="team-text-link" data-view="sales">Ventas del mercado →</button></p>
               <div id="roster-list" class="roster-groups" aria-live="polite"></div>
             </div>
           </div>
@@ -147,12 +147,14 @@
             <div class="market-tabs" aria-label="Consultas de mercado">
               <button type="button" id="market-current-tab" aria-pressed="true">Mercado</button>
               <button type="button" id="market-players-tab" aria-pressed="false">Jugadores</button>
+              <button type="button" id="market-sales-tab" aria-pressed="false">Ventas</button>
               <button type="button" id="market-history-tab" aria-pressed="false">Historial</button>
             </div>
             <div id="market-current-view" class="catalog-content">
               <h2>Mercado de 15 jugadores</h2>
               <p>Porteros, defensas, centrocampistas y delanteros. La selección inicial se reserva hasta completar el reparto.</p>
               <p id="market-current-status" role="status"></p>
+              <p id="market-action-status" role="status"></p>
               <ul id="market-current-list" aria-label="Jugadores del mercado"></ul>
             </div>
             <div id="market-players-view" class="catalog-content" hidden>
@@ -176,6 +178,13 @@
               <ul id="catalog-list" aria-label="Jugadores"></ul>
               <div class="market-pagination"><button type="button" id="catalog-prev" disabled>Anterior</button><button type="button" id="catalog-next" disabled>Siguiente</button></div>
             </div>
+            <div id="market-sales-view" class="catalog-content" hidden>
+              <h2>Ventas entre managers</h2>
+              <p id="market-sales-status" role="status"></p>
+              <div id="market-sales-controls"></div>
+              <h3>Jugadores en venta</h3><ul id="market-sales-list"></ul>
+              <h3>Mis ofertas</h3><ul id="market-offers-list"></ul>
+            </div>
             <div id="market-history-view" class="catalog-content" hidden>
               <h2>Historial de traspasos</h2>
               <p>Todos los traspasos confirmados de tu división, de más reciente a más antiguo.</p>
@@ -184,6 +193,18 @@
               <button type="button" id="history-more" hidden>Cargar más traspasos</button>
             </div>
           </div>
+          <section id="lineup-panel" class="detail-card lineup-panel" hidden aria-labelledby="lineup-heading">
+            <h2 id="lineup-heading">Mi alineación</h2>
+            <p id="lineup-status" role="status"></p>
+            <h3 id="lineup-count">0 / 11 titulares</h3>
+            <p id="lineup-positions"></p>
+            <div id="lineup-slots" class="lineup-slots"></div>
+            <button class="primary-button" type="button" id="lineup-save" disabled>Guardar once</button>
+            <button type="button" id="lineup-draft" hidden>Preparar borrador personal</button>
+            <button type="button" id="lineup-reload">Actualizar jornada</button>
+            <p id="lineup-message" role="status"></p>
+            <h3>Partidos de la jornada</h3><ul id="lineup-fixtures"></ul>
+          </section>
           <section id="standings-panel" class="detail-card standings-panel" hidden aria-labelledby="standings-heading">
             <h2 id="standings-heading">Clasificación</h2>
             <p id="standings-status" role="status"></p>
@@ -245,9 +266,9 @@
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
-    <div class="release-info"><span>Aplicación piloto · versión 20</span><button id="app-refresh" type="button">Actualizar app</button></div>
+    <div class="release-info"><span>Aplicación piloto · versión 21</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=20"></script>
+  <script type="module" src="./app.js?v=21"></script>
 </body>
 </html>

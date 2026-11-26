@@ -154,3 +154,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .roster-sale-button{border:1px solid #a78952;border-radius:10px;background:#a17a36;color:#fff;padding:8px 10px;font-size:11px;font-weight:800;min-height:37px}
 .roster-sale-button:disabled{opacity:.52;cursor:not-allowed}
 @media(max-width:360px){.roster-player{padding:10px 8px;gap:5px}.roster-player-name{font-size:14px}.roster-player-actions{min-width:94px}.roster-player-value{font-size:12px}.roster-sale-button{padding:7px 6px}}
+/* Mercado y once: controles reales, sin sustituir la protección del servidor. */
+.market-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.market-operation{display:grid;gap:.35rem;padding:.35rem 0}
+.market-operation button{min-height:44px}
+#lineup-panel{display:grid;gap:.65rem}
+#lineup-panel[hidden]{display:none}
+#lineup-panel h3{margin:.3rem 0}
+#lineup-panel p{margin:0;color:#516975;font-size:14px}
+.lineup-slots{display:grid;gap:.55rem}
+.lineup-slots label{display:grid;gap:.2rem;font-size:13px;font-weight:700}
+.lineup-slots select{min-width:0;width:100%;padding:.7rem;border:1px solid #aec1c9;border-radius:9px;background:white;color:#163845;font:inherit}
+#lineup-panel button:not(.primary-button){padding:.65rem;border:1px solid #b2c8ce;background:#f1f6f8;color:#254b5d;border-radius:9px}
+#lineup-panel button[hidden]{display:none}
+#lineup-fixtures{padding-left:1.1rem;font-size:14px;color:#345560}
+.roster-market-button{border:1px solid #b2c8ce;border-radius:10px;background:#e9f5f5;color:#16616c;padding:7px 9px;font-size:11px;font-weight:800;min-height:37px}

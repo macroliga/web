@@ -1,0 +1,7 @@
+# PWA piloto v21 · 26/11/2026
+- Alineación: once por jornada, borrador privado sin calendario, fecha de cierre, partidos, posición y club del jugador. Guarda usando sesión del manager y versión; nunca guarda el PIN. Los huecos se conservan según el modelo existente; no se han inventado nuevas reglas de formación.
+- Mercado: pujas y retirada, mínimo y cantidades propias, anuncios/ventas entre managers y ofertas propias. Desde Mi equipo, acceso al jugador seleccionado. Solo habilita nuevas operaciones si el servidor confirma ciclo abierto y, para ventas, política habilitada. No activa mercado o ventas.
+- La función Actualizar app permanece como recuperación manual de caché; renovación y navegación no cambian. No se cachean API o datos privados.
+- Backend: dev/catalogo-integracion, b13926f984926ccf77e55494a22a0ec0aa993c60 y su seguimiento. Migraciones 012/013 instaladas en macroliga-piloto; calendario oficial jornada 14, cierre 27/11/2026 21:00 Esp/Madrid. No se cargaron puntos ni se programó liquidación.
+- Pruebas: 141 unitarias (todas pasan); prueba E2E Chromium emulando Pixel 7 con Auth/RPC ficticias: puja, retirada, ventas, su bloqueo, borrador, alineación oficial y cierre, navegación y reentrada sin PIN, actualización de caché, fallo RPC, sesión revocada y logout. SQL PostgreSQL 17.5 en PGlite probado por separado, sin fixtures alojados.
+- Pendientes: mercado real, ofertas Computer y Equipo Malo, reglas de formación confirmadas, calendario automático actualizado y liquidación de puntos/premios.
