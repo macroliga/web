@@ -98,6 +98,7 @@ function borrarDatosPrivados() {
     if(el(id))el(id).textContent = '—';
   }
   el('roster-list').replaceChildren();
+  if(el('roster-total'))el('roster-total').textContent='0 / 16';
   if(el('team-refresh-status'))el('team-refresh-status').textContent='';
 }
 function mostrarAcceso(recuperando = false) {
@@ -125,17 +126,68 @@ function mostrarAplicacion() {
 function pintarPlantilla(jugadores) {
   const lista = el('roster-list');
   lista.replaceChildren();
+  el('roster-total').textContent = String(jugadores.length) + ' / 16';
   if (!jugadores.length) {
-    const li = document.createElement('li');
-    li.textContent = 'Todavía no se han repartido futbolistas.';
-    lista.appendChild(li);
+    const aviso = document.createElement('p');
+    aviso.className = 'roster-empty';
+    aviso.textContent = 'Todavía no se han repartido futbolistas.';
+    lista.appendChild(aviso);
     return;
   }
-  for (const j of jugadores) {
-    const li = document.createElement('li');
-    li.textContent = [j.nombre_jugador, j.posicion, j.club,
-      euros(j.valor_mercado_centimos)].filter(Boolean).join(' · ');
-    lista.appendChild(li); // Se muestra como texto, nunca como HTML.
+  const posiciones = [
+    ['GK', '🥅 Porteros'],
+    ['DEF', '🛡️ Defensas'],
+    ['MID', '⚙️ Medios'],
+    ['FWD', '🎯 Delanteros']
+  ];
+  const normalizar = (valor) => {
+    const p = String(valor || '').trim().toUpperCase();
+    if (['GK','POR','PORTERO','PORTEROS'].includes(p)) return 'GK';
+    if (['DEF','DEFENSA','DEFENSAS'].includes(p)) return 'DEF';
+    if (['MID','MED','MC','MEDIO','MEDIOS','CENTROCAMPISTA'].includes(p)) return 'MID';
+    if (['FWD','DEL','DELANTERO','DELANTEROS'].includes(p)) return 'FWD';
+    return 'OTRO';
+  };
+  const hacer = (etiqueta, clase, texto) => {
+    const nodo = document.createElement(etiqueta);
+    if (clase) nodo.className = clase;
+    if (texto !== undefined && texto !== null) nodo.textContent = String(texto);
+    return nodo;
+  };
+  const grupos = posiciones.concat([['OTRO', 'Otros']]);
+  for (const [codigo, titulo] of grupos) {
+    const datos = jugadores.filter(j => normalizar(j.posicion) === codigo)
+      .sort((a,b) => Number(b.valor_mercado_centimos || 0) - Number(a.valor_mercado_centimos || 0));
+    if (!datos.length && codigo === 'OTRO') continue;
+    const bloque = hacer('section', 'roster-position');
+    const cabecera = hacer('div', 'roster-position-head');
+    cabecera.append(hacer('h4', '', titulo), hacer('span', '', datos.length + ' · VALOR ↓'));
+    bloque.appendChild(cabecera);
+    if (!datos.length) {
+      bloque.appendChild(hacer('p', 'roster-position-empty', 'Sin futbolistas en esta posición.'));
+    }
+    for (const jugador of datos) {
+      const fila = hacer('article', 'roster-player');
+      const descripcion = hacer('div', 'roster-player-info');
+      descripcion.appendChild(hacer('strong', 'roster-player-name', jugador.nombre_jugador || 'Jugador sin nombre'));
+      descripcion.appendChild(hacer('span', 'roster-player-club', jugador.club || 'Club sin confirmar'));
+      // Solo mostramos puntos y cláusulas cuando la fuente segura devuelve esos campos.
+      const detalles = [];
+      if (jugador.puntos !== null && jugador.puntos !== undefined) detalles.push(jugador.puntos + ' pts');
+      if (jugador.clausula_centimos !== null && jugador.clausula_centimos !== undefined) detalles.push('Cláusula ' + euros(jugador.clausula_centimos));
+      if (detalles.length) descripcion.appendChild(hacer('small', 'roster-player-extra', detalles.join(' · ')));
+      const acciones = hacer('div', 'roster-player-actions');
+      acciones.appendChild(hacer('small', 'roster-value-label', 'VALOR'));
+      acciones.appendChild(hacer('strong', 'roster-player-value', euros(jugador.valor_mercado_centimos || 0)));
+      const vender = hacer('button', 'roster-sale-button', 'Vender al ☠️');
+      vender.type = 'button';
+      vender.disabled = true;
+      vender.title = 'La venta al Equipo Malo aún no está activada';
+      acciones.appendChild(vender);
+      fila.append(descripcion, acciones);
+      bloque.appendChild(fila);
+    }
+    lista.appendChild(bloque);
   }
 }
 async function consultarEquipo(jwt) {
@@ -435,14 +487,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='19')return false;
-  url.searchParams.set('release','19');
+  if(!manual&&url.searchParams.get('release')==='20')return false;
+  url.searchParams.set('release','20');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='19'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='20'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.
