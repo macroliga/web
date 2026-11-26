@@ -1,6 +1,7 @@
 import { crearCliente } from './api.mjs';
 import { euros } from './logic.mjs';
 import { cuentasDemostracion } from './entrenadores.mjs';
+import { solicitarGuardadoPin } from './gestor-pin.mjs';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
   sesionRecordada, olvidarSesion, SESION_KEY } from './session.mjs';
 
@@ -172,6 +173,7 @@ loginForm.addEventListener('submit', async (event) => {
   const cuenta = cuentas.find((c) => c.correo === entrenador.value);
   if (!cuenta) { aviso('Selecciona tu entrenador.'); return; }
   if (!/^\d{6}$/.test(pin.value)) { aviso('Introduce un PIN de seis cifras.'); return; }
+  const pinIntroducido = pin.value;
   const numeroIntento = ++intento;
   loginButton.disabled = true;
   aviso('Comprobando PIN…');
@@ -187,10 +189,19 @@ loginForm.addEventListener('submit', async (event) => {
     venceSesion(nuevaSesion);
     recordarEntrenador(storage, cuenta.correo);
     // Solo se conserva el refresh token, nunca el PIN.
-    const accesoGuardado = recordarPin.checked && guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
-    if (!recordarPin.checked) olvidarSesion(storage);
-    if (recordarPin.checked && !accesoGuardado) window.alert('No se pudo recordar el acceso en este dispositivo. Tendrás que introducir el PIN al volver.');
+    guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
     pintarEquipo(equipo, jugadores);
+    if (recordarPin.checked) {
+      // Se solicita al gestor de contraseñas del dispositivo, nunca al
+      // almacenamiento local de MACROLIGA; puede pedir confirmación.
+      void solicitarGuardadoPin({
+        navegador: navigator,
+        PasswordCredentialCtor: window.PasswordCredential,
+        correo: cuenta.correo,
+        nombre: cuenta.entrenador,
+        pin: pinIntroducido
+      });
+    }
     mostrarAplicacion();
   } catch (error) {
     if (nuevaSesion?.accessToken) await cliente.cerrarSesion(nuevaSesion.accessToken);

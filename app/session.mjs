@@ -9,7 +9,7 @@ function obtener(storage, clave) {
   try { return storage?.getItem(clave) ?? null; } catch { return null; }
 }
 function guardar(storage, clave, valor) {
-  try { if (!storage) return false; storage.setItem(clave, valor); return storage.getItem(clave) === valor; } catch { return false; }
+  try { storage?.setItem(clave, valor); return true; } catch { return false; }
 }
 function quitar(storage, clave) {
   try { storage?.removeItem(clave); } catch { /* Almacenamiento deshabilitado */ }
@@ -28,7 +28,7 @@ export function entrenadorRecordado(storage) {
 }
 export function guardarSesion(storage, email, refreshToken) {
   if (!correoValido(email) || typeof refreshToken !== 'string' ||
-      refreshToken.length < 1 || refreshToken.length > 8192) return false;
+      refreshToken.length < 20 || refreshToken.length > 8192) return false;
   return guardar(storage, SESION_KEY, JSON.stringify({
     email, refreshToken
   }));
@@ -40,7 +40,7 @@ export function sesionRecordada(storage) {
     const data = JSON.parse(raw);
     if (!correoValido(data?.email) ||
         typeof data?.refreshToken !== 'string' ||
-        data.refreshToken.length < 1 || data.refreshToken.length > 8192) {
+        data.refreshToken.length < 20 || data.refreshToken.length > 8192) {
       quitar(storage, SESION_KEY);
       return null;
     }
