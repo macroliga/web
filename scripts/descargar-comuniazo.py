@@ -13,16 +13,27 @@ from zoneinfo import ZoneInfo
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from src.sports.comuniazo import extract_catalog, fetcher, validate_permission
+from src.sports.comuniazo import extract_catalog, fetcher, validate_permission, _public_fetcher
 
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--permiso",type=Path,required=True)
-    p.add_argument("--directorio",type=Path,required=True)
+    p.add_argument("--permiso",type=Path)
+    p.add_argument("--directorio",type=Path)
+    p.add_argument("--vista-previa",action="store_true",help="Leer tablas públicas y probar el reparto sin guardar jugadores ni usar Supabase")
     args=p.parse_args()
+    if args.vista_previa:
+        if args.permiso or args.directorio:
+            p.error("--vista-previa no admite exportación ni permiso")
+        snapshot,info=extract_catalog(_public_fetcher(),permission_ref="Lectura pública en memoria; no acredita licencia",diagnostic=True)
+        # IPC exclusivamente en memoria: ni archivos ni nombres en la salida.
+        output=subprocess.run(["node",str(ROOT/"scripts/previsualizar-comuniazo.mjs")],input=json.dumps(snapshot),text=True,cwd=ROOT,check=True,capture_output=True)
+        print(json.dumps({**json.loads(output.stdout),**{k:info[k] for k in ("asOf","clubs","downloaded","active","excluded")}},ensure_ascii=False))
+        return 0
+    if not args.permiso or not args.directorio:
+        p.error("La exportación requiere --permiso y --directorio; para lectura sin guardado usar --vista-previa")
     permission=read_json(args.permiso)
     ref=validate_permission(permission)
     # No publicar archivos deportivos fuera del directorio privado ignorado.

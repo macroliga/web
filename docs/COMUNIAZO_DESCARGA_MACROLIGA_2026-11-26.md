@@ -39,8 +39,7 @@ de un jugador en el listado general **no prueba** que siga en LaLiga.
 - Destino fijo HTTPS de Comuniazo, sin redirecciones, secretos ni cookies de
   comunidad. Límites de respuesta y timeout; concurrencia máxima cinco
   fichas de club. No cambia cabeceras para sortear bloqueos.
-- Espera las 20 rutas públicas conocidas de 2026/27; si el índice no devuelve
-  enlaces, verifica las 20 fichas directamente. Si devuelve una composición
+- Espera las 20 rutas públicas conocidas de 2026/27; si el índice devuelve HTML válido sin enlaces, verifica las 20 fichas directamente. Un error HTTP o de red aborta el lote, sin rutas alternativas. Si devuelve una composición
   distinta o incompleta, aborta. Al menos 15 jugadores por club, 490 activos,
   550 filas generales y 15 por filtro (umbrales del método de referencia).
   Todos los activos necesitan sus datos en el listado y la posición.
@@ -161,3 +160,38 @@ de terceros. La publicación de datos en el piloto sigue pendiente. No
 contactar al proveedor sin autorización expresa. Se descarta ComunioStats
 como sustitución automática por antecedentes de fiabilidad informados por
 el usuario; no modificar Laviana.
+
+## Vista previa de lectura pública, sin Excel ni API
+
+El usuario ratifica que el método acordado es leer las tablas HTML públicas,
+como hacía Excel, sin sesiones, datos de comunidad, claves ni API privada.
+El control `--permiso` es propio del importador de MACROLIGA, no un control
+de acceso de Comuniazo. Se separa la lectura de diagnóstico de la exportación.
+La vista previa transmite los campos necesarios por stdin al motor en memoria;
+solo imprime contadores, reparto de 16 equipos, rango de valores y factibilidad
+de reserva de 15 (2/5/5/3). No se analiza ni publica contenido editorial.
+No escribe jugadores, no crea equipos ni ciclos y no afirma una licencia.
+
+```sh
+python -B scripts/descargar-comuniazo.py --vista-previa
+```
+
+El modo diagnóstico no acepta un directorio, no crea snapshots persistentes
+y se rechaza por defecto en el contrato de catálogo de carga. El motor de
+simulación lo admite expresamente, sin modificar los permisos SQL.
+La condición de exportación e importación sigue diferenciada de la mera
+lectura del HTML público. El motor excluye jugadores de valor cero del
+reparto y de la reserva elegible, de acuerdo con la lógica SQL.
+
+Resultado real de la vista previa (26/11/2026, 18:50 Europe/Madrid):
+HTTP público leído sin sesión; 623 filas generales, 551 activos de 20
+clubes y 72 históricos excluidos. Reparto en memoria: 16 equipos, 240
+jugadores asignados, 311 elegibles para Computer (15 GK, 107 DEF, 131 MID,
+58 FWD). Patrimonio simulado de 70.000.000 €; plantillas entre 36.550.000 €
+y 39.880.000 €, diferencia de 3.330.000 €. Hay reserva suficiente para
+15 jugadores repartidos 2/5/5/3. Este resultado usa el simulador JavaScript,
+no el reparto SQL definitivo. No guarda fichas ni activa la liga.
+Tras la ejecución se endureció la respuesta ante errores de índice;
+la prueba ficticia confirma que un 429 aborta sin consultar otras rutas.
+19 pruebas Python y 157 pruebas Node superadas; comprobación de sintaxis
+correcta. No se ha cambiado la base alojada ni Comunio Laviana.

@@ -30,9 +30,9 @@ function fecha(value) {
   }
   return value;
 }
-export function normalizarCatalogo(raw) {
+export function normalizarCatalogo(raw, {allowDiagnostic=false}={}) {
   if (!raw || raw.schemaVersion !== 1 || raw.currency !== 'EUR') throw new TypeError('Versión o moneda de catálogo inválida');
-  if (!['authorized','fixture'].includes(raw.kind)) throw new TypeError('Origen de catálogo no declarado');
+  if (!['authorized','fixture',...(allowDiagnostic?['diagnostic']:[])].includes(raw.kind)) throw new TypeError('Origen de catálogo no declarado');
   const provider = texto(raw.provider,'proveedor',100);
   const competition = texto(raw.competition,'competición',80);
   const season = texto(raw.season,'temporada',50);
@@ -58,8 +58,8 @@ export function normalizarCatalogo(raw) {
   return {...catalogo,snapshotHash:huella(catalogo)};
 }
 
-export function verificarCatalogo(snapshot) {
-  const normalizado = normalizarCatalogo(snapshot);
+export function verificarCatalogo(snapshot, options) {
+  const normalizado = normalizarCatalogo(snapshot, options);
   if (snapshot.snapshotHash !== normalizado.snapshotHash) throw new Error('Huella del catálogo no coincide');
   return normalizado;
 }

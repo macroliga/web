@@ -48,7 +48,7 @@ function asignar(seleccion, teams, rules, budget, seed, attempt) {
 }
 
 export function planificarReparto(snapshot, division, options={}) {
-  const catalog=verificarCatalogo(snapshot);
+  const catalog=verificarCatalogo(snapshot, {allowDiagnostic:true});
   if (division?.status!=='draft' || division.season!==catalog.season ||
       !Number.isSafeInteger(division.maxRoster)||division.maxRoster>30 ||
       !Array.isArray(division.teamIds)||division.teamIds.length===0||division.teamIds.length>64) {
@@ -62,12 +62,13 @@ export function planificarReparto(snapshot, division, options={}) {
   const rules=reglasValidas(options,division.maxRoster,wealth);
   const budget=wealth-BigInt(rules.minimumCashCents);
   const active=catalog.players.filter(p=>p.active);
-  if (active.length-teams.length*15<rules.reservePlayers) throw new Error('Faltan futbolistas para la reserva de mercado');
+  const eligible=active.filter(p=>valor(p)>0n);
+  if (eligible.length-teams.length*15<rules.reservePlayers) throw new Error('Faltan futbolistas para la reserva de mercado');
   const pools={};
   const cheapest={};
   for(const p of POSICIONES) {
     const need=teams.length*rules.slots[p];
-    pools[p]=active.filter(x=>x.position===p&&valor(x)<=budget).sort(compararPrecio);
+    pools[p]=eligible.filter(x=>x.position===p&&valor(x)<=budget).sort(compararPrecio);
     if(pools[p].length<need) throw new Error('Insuficientes futbolistas elegibles en '+p);
     cheapest[p]=pools[p].slice(0,need);
   }

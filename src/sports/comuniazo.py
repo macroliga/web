@@ -162,11 +162,10 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnosti
     Rechaza el lote entero si falta un club, precio, ficha o posición de un activo.
     """
     if not isinstance(permission_ref,str) or not permission_ref.strip(): raise ValueError("Referencia de autorización obligatoria")
-    try: index=fetch(INDEX)
-    except Exception:
-        # Igual que el flujo de referencia: si el índice no está disponible,
-        # consultar TODAS las 20 fichas públicas, no usar plantillas históricas.
-        index=BeautifulSoup("<h1>Índice no disponible</h1>","html.parser")
+    # No usar rutas alternativas para eludir errores de acceso, límites o
+    # indisponibilidad del servidor. El fallback se limita a HTML válido
+    # cuyo índice no trae enlaces, comprobando las 20 fichas públicas.
+    index=fetch(INDEX)
     paths=extract_clubs(index)
     membership={}; names=set()
     with ThreadPoolExecutor(max_workers=5) as pool:

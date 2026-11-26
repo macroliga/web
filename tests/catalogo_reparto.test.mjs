@@ -121,3 +121,22 @@ test('rechaza HTTP fallido, contenido no JSON, tamaño excesivo y feed de otra t
   await assert.rejects(descargarCatalogo(fuente,{fetchImpl:async()=>respuesta({...real(),season:'otro'})}),/temporada|season/);
   await assert.rejects(descargarCatalogo(fuente,{fetchImpl:async()=>respuesta({...real(),kind:'fixture'})}),/autorizado/);
 });
+
+test('diagnóstico solo disponible de forma explícita para simulación, no catálogo de carga',()=>{
+  const raw={...clone(),kind:'diagnostic',provider:'comuniazo',permissionRef:'Lectura sin autorización acreditada'};
+  assert.throws(()=>normalizarCatalogo(raw),/Origen/);
+  const snap=normalizarCatalogo(raw,{allowDiagnostic:true});
+  assert.throws(()=>verificarCatalogo(snap),/Origen/);
+  const p=planificarReparto(snap,division,options);
+  assert.equal(p.catalogKind,'diagnostic');
+  assert.deepEqual(verificarReparto(snap,division,p),p);
+});
+
+test('no asigna futbolistas de valor cero y exige reserva de elegibles',()=>{
+  const raw=clone();
+  for(const p of raw.players) if(p.position==='GK'&&p.externalId.endsWith('1')) p.marketValueCents='0';
+  const p=planificarReparto(normalizarCatalogo(raw),division,options);
+  assert.ok(p.allocations.flatMap(t=>t.players).every(x=>BigInt(x.marketValueCents)>0n));
+  for(const x of raw.players) x.marketValueCents='0';
+  assert.throws(()=>planificarReparto(normalizarCatalogo(raw),division,options),/reserva/);
+});

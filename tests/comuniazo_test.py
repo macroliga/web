@@ -80,6 +80,16 @@ class TestComuniazo(unittest.TestCase):
         self.assertNotIn("excludedRows",info)
         self.assertNotIn("historico-0",json.dumps(info))
         self.assertEqual(len(info["points"]),500)
+    def test_indice_denegado_no_intenta_otras_rutas(self):
+        from urllib.error import HTTPError
+        calls=[]
+        def denied(path):
+            calls.append(path)
+            raise HTTPError(cz.ORIGIN+path,429,"Too Many Requests",None,None)
+        with self.assertRaises(HTTPError):
+            cz.diagnostico_publico(denied)
+        self.assertEqual(calls,[cz.INDEX])
+
     def test_fallback_indice_vacio(self):
         self.pages[cz.INDEX]="<h1>LaLiga</h1>"
         self.assertEqual(self.extract()[1]["active"],500)
@@ -164,6 +174,26 @@ class TestComuniazo(unittest.TestCase):
           console.log(JSON.stringify({teams:plan.allocations.length,assigned:assigned.length,unassigned:plan.unassignedActive}));
         '''],input=json.dumps(next_snapshot),text=True,cwd=ROOT,capture_output=True,check=True)
         self.assertEqual(json.loads(result.stdout),{"teams":16,"assigned":240,"unassigned":260})
+
+    def test_vista_previa_publica_sin_credenciales_ni_archivos(self):
+        spec=importlib.util.spec_from_file_location("cz_cli",ROOT/"scripts/descargar-comuniazo.py")
+        cli=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cli)
+        base=ROOT/".macroliga-local"
+        base.mkdir(exist_ok=True)
+        before=set(base.iterdir())
+        output=io.StringIO()
+        with patch.object(cli,"_public_fetcher",return_value=self.fetch),patch.object(sys,"argv",["cli","--vista-previa"]),contextlib.redirect_stdout(output):
+            self.assertEqual(cli.main(),0)
+        info=json.loads(output.getvalue())
+        self.assertEqual(info["teams"],16)
+        self.assertEqual(info["assigned"],240)
+        self.assertEqual(info["marketFeasible"],15)
+        self.assertEqual(info["marketSlots"],{"GK":2,"DEF":5,"MID":5,"FWD":3})
+        self.assertEqual(info["wealthCents"],"7000000000")
+        self.assertNotIn("players",info)
+        self.assertEqual(len(self.calls),26)
+        self.assertEqual(set(base.iterdir()),before)
 
     def test_cli_atomicidad_y_una_descarga(self):
         spec=importlib.util.spec_from_file_location("cz_cli",ROOT/"scripts/descargar-comuniazo.py")
