@@ -9,7 +9,7 @@ class Elemento {
     this.hidden = false; this.disabled = false; this.value = '';
     this.textContent = ''; this.checked = true; this.children = [];
     this.events = new Map(); this.dataset = {};
-    this.classList = {toggle(){}};
+    this.classList = {toggle(){},add(){},remove(){}};
   }
   addEventListener(name, fn) { this.events.set(name, fn); }
   dispatch(name, event = {}) { return this.events.get(name)?.({preventDefault(){}, ...event}); }
@@ -24,7 +24,7 @@ const ids = ['login-view','private-view','login-form','manager-select','password
   'remember-pin','login-button','login-message','team-view','home-view','section-view','top-balance',
   'session-recovery','retry-session','prototype-note','section-icon','section-title','section-message',
   'team-title','team-short-name','team-division','header-balance','team-balance','team-value',
-  'team-players','team-capacity','roster-list','login-subtitle','logout-button','forget-session'];
+  'team-players','team-capacity','team-wealth','home-wealth','team-refresh-status','admin-nav','roster-list','login-subtitle','logout-button','forget-session'];
 function entorno() {
   const data = new Map();
   const storage = {
@@ -56,7 +56,8 @@ function entorno() {
     }
     assert.match(options.headers.Authorization,/^Bearer jwt-fake/);
     if (rpcError) return response({code:'P0001'},400);
-    if (url.endsWith('macroliga_mi_equipo')) return response([{equipo_id:'ficticio',nombre_equipo:'Equipo ficticio',nombre_division:'División ficticia',saldo_centimos:500000,valor_plantilla_centimos:1000000,jugadores:1,margen_pujas_centimos:500000}]);
+    if (url.endsWith('macroliga_mi_equipo')) return response([{equipo_id:'ficticio',division_id:'division-ficticia',nombre_equipo:'Equipo ficticio',nombre_division:'División ficticia',saldo_centimos:500000,valor_plantilla_centimos:1000000,jugadores:1,margen_pujas_centimos:500000}]);
+    if (url.endsWith('macroliga_admin_arranque_estado')) return response({code:'42501'},403);
     assert.match(url,/macroliga_plantilla_equipo$/);
     assert.deepEqual(request,{p_equipo_id:'ficticio'});
     return response([{nombre_jugador:'Jugador ficticio',posicion:'DEL',club:'Prueba',valor_mercado_centimos:1000000}]);
@@ -76,6 +77,7 @@ async function abrir(env) {
   doc.getElementById=id=>elementos[id];
   doc.createElement=()=>new Elemento();
   doc.querySelectorAll=()=>Object.values(botones);
+  doc.querySelector=()=>new Elemento();
   const win=new Elemento();
   win.localStorage=env.storage;
   win.scrollTo=()=>{};

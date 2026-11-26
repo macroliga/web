@@ -1,8 +1,9 @@
-// Cliente publico de SOLO autenticacion y RPC de lectura.
+// Cliente público de autenticación, lecturas y RPC de administración acotadas.
 // Nunca se usa la clave service_role. La identidad se valida en Supabase.
 import { refreshValido } from './session.mjs?v=10';
 
-const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo']);
+const ADMIN = new Set(['macroliga_admin_arranque_estado','macroliga_admin_importar_catalogo','macroliga_admin_simular_reparto','macroliga_admin_aplicar_reparto','macroliga_admin_iniciar_todo']);
+const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo', 'macroliga_catalogo_division', 'macroliga_historial_traspasos','macroliga_mercado_visible','macroliga_clasificacion']);
 
 function extraerSesion(data) {
   if (!data?.access_token || !refreshValido(data?.refresh_token)) {
@@ -38,6 +39,7 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
         ? 'No se pudo completar el acceso. Comprueba las credenciales.'
         : 'La consulta no se pudo completar (' + response.status + ').');
       error.status = response.status;
+      if (path.startsWith('/rest/v1/rpc/macroliga_admin_') && data?.code === 'P0001' && typeof data.message === 'string') error.adminMessage = data.message.slice(0, 300);
       error.code = data?.error_code || data?.code || data?.error;
       throw error;
     }
@@ -80,6 +82,11 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
       if (!LECTURAS.has(nombre)) throw new Error('Operacion no permitida por el cliente');
       if (!token) throw new Error('Debes iniciar sesion');
       return solicitar('/rest/v1/rpc/' + nombre, parametros || {}, token);
+    },
+    async administrar(nombre, parametros, token) {
+      if (!ADMIN.has(nombre) || !token || !parametros?.p_division) throw new Error('Operación administrativa no permitida');
+      // Nunca cerrar la sesión por una denegación administrativa.
+      return solicitar('/rest/v1/rpc/' + nombre, parametros, token);
     },
     async cerrarSesion(token) {
       if (!token) return;

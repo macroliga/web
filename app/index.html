@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=7">
+  <link rel="stylesheet" href="./styles.css?v=13">
 </head>
 <body>
   <div class="shell">
@@ -66,6 +66,7 @@
             <span class="team-shortcut-copy">
               <small>MI EQUIPO</small>
               <strong id="team-short-name">Tu equipo</strong>
+              <small>Patrimonio <span id="home-wealth">—</span></small>
             </span>
             <span class="right-chevron" aria-hidden="true">›</span>
           </button>
@@ -84,7 +85,7 @@
             <button type="button" class="tile tile-market" data-view="market">
               <span class="tile-icon" aria-hidden="true">⚽</span>
               <span class="tile-label">MERCADO</span>
-              <small>En preparación</small>
+              <small>Jugadores e historial</small>
             </button>
             <button type="button" class="tile tile-bad" data-view="bad">
               <span class="tile-icon" aria-hidden="true">👹</span>
@@ -110,9 +111,11 @@
             <div class="figures">
               <div><span>Saldo</span><strong id="team-balance">—</strong></div>
               <div><span>Valor plantilla</span><strong id="team-value">—</strong></div>
+              <div><span>Patrimonio</span><strong id="team-wealth">—</strong></div>
               <div><span>Futbolistas</span><strong id="team-players">—</strong></div>
               <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
             </div>
+            <p id="team-refresh-status" role="status"></p>
             <div class="squad-section">
               <h3>Mi plantilla</h3>
               <ul id="roster-list" aria-live="polite"></ul>
@@ -122,11 +125,99 @@
 
         <section id="section-view" class="page-view detail-page" aria-labelledby="section-title" hidden>
           <button type="button" class="back-button" data-view="home">‹ Volver a Inicio</button>
-          <div class="detail-card empty-state">
+          <div class="detail-card empty-state" id="section-placeholder">
             <span id="section-icon" class="empty-icon" aria-hidden="true">⚽</span>
             <h2 id="section-title">Sección en preparación</h2>
             <p id="section-message">Estamos preparando esta parte del piloto.</p>
             <span class="status-text">Todavía no hay operaciones disponibles</span>
+          </div>
+          <div id="market-catalog" class="detail-card catalog-panel" hidden>
+            <div class="market-tabs" aria-label="Consultas de mercado">
+              <button type="button" id="market-current-tab" aria-pressed="true">Mercado</button>
+              <button type="button" id="market-players-tab" aria-pressed="false">Jugadores</button>
+              <button type="button" id="market-history-tab" aria-pressed="false">Historial</button>
+            </div>
+            <div id="market-current-view" class="catalog-content">
+              <h2>Mercado de 15 jugadores</h2>
+              <p>Porteros, defensas, centrocampistas y delanteros. La selección inicial se reserva hasta completar el reparto.</p>
+              <p id="market-current-status" role="status"></p>
+              <ul id="market-current-list" aria-label="Jugadores del mercado"></ul>
+            </div>
+            <div id="market-players-view" class="catalog-content" hidden>
+              <h2>Todos los jugadores</h2>
+              <p>Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.</p>
+              <label for="catalog-search">Buscar jugador, club o manager</label>
+              <input id="catalog-search" type="search" placeholder="Nombre, club o equipo">
+              <label for="catalog-sort">Ordenar por</label>
+              <select id="catalog-sort"><option value="name">Nombre A–Z</option><option value="points-desc">Más puntos</option><option value="points-asc">Menos puntos</option><option value="value-desc">Mayor valor</option><option value="value-asc">Menor valor</option></select>
+              <details class="market-filter"><summary>Filtros de jugadores</summary>
+                <div class="catalog-controls">
+                  <label>Club <select id="catalog-club"><option value="">Todos los clubes</option></select></label>
+                  <label>Manager / propietario <select id="catalog-owner"><option value="all">Todos</option><option value="computer">Computer</option><option value="team">Todos los managers</option><option value="bad_team">Equipo Malo</option></select></label>
+                  <label>Posición <select id="catalog-position"><option value="">Todas</option><option value="GK">Portero</option><option value="DEF">Defensa</option><option value="MID">Centrocampista</option><option value="FWD">Delantero</option></select></label>
+                  <div class="market-range"><label>Puntos mín. <input id="catalog-min-points" type="number" step="1"></label><label>Puntos máx. <input id="catalog-max-points" type="number" step="1"></label></div>
+                  <div class="market-range"><label>Valor mín. (€) <input id="catalog-min-value" type="number" min="0" step="0.01"></label><label>Valor máx. (€) <input id="catalog-max-value" type="number" min="0" step="0.01"></label></div>
+                  <button type="button" id="catalog-reset">Quitar filtros</button>
+                </div>
+              </details>
+              <p id="catalog-status" role="status"></p>
+              <ul id="catalog-list" aria-label="Jugadores"></ul>
+              <div class="market-pagination"><button type="button" id="catalog-prev" disabled>Anterior</button><button type="button" id="catalog-next" disabled>Siguiente</button></div>
+            </div>
+            <div id="market-history-view" class="catalog-content" hidden>
+              <h2>Historial de traspasos</h2>
+              <p>Todos los traspasos confirmados de tu división, de más reciente a más antiguo.</p>
+              <p id="history-status" role="status"></p>
+              <ul id="history-list" aria-label="Traspasos de la liga"></ul>
+              <button type="button" id="history-more" hidden>Cargar más traspasos</button>
+            </div>
+          </div>
+          <section id="standings-panel" class="detail-card standings-panel" hidden aria-labelledby="standings-heading">
+            <h2 id="standings-heading">Clasificación</h2>
+            <p id="standings-status" role="status"></p>
+            <table class="standings-table">
+              <thead><tr><th scope="col">Pos.</th><th scope="col">Manager</th><th scope="col">Valor equipo</th><th scope="col">Pts</th></tr></thead>
+              <tbody id="standings-rows"></tbody>
+            </table>
+          </section>
+          <div id="admin-panel" class="detail-card admin-panel" hidden>
+            <h2>Arranque de la división</h2>
+            <p id="admin-state"></p><p id="admin-message" role="status"></p>
+            <form id="admin-import-form" hidden>
+              <h3>1. Catálogo completo</h3>
+              <label for="admin-file">Lote JSON autorizado de jugadores, valores y puntos</label>
+              <input id="admin-file" type="file" accept=".json,application/json" required>
+              <label><input type="checkbox" id="admin-source-confirm" required> Dispongo de autorización para utilizar estos datos.</label>
+              <button type="submit">Cargar solo catálogo</button>
+            </form>
+            <form id="admin-form" hidden>
+              <h3>2. Patrimonio y jugadores por equipo</h3>
+              <label for="admin-wealth">Patrimonio (millones de euros)</label>
+              <input id="admin-wealth" type="number" min="1" max="10000" value="70" required>
+              <label for="admin-cash">Caja mínima (millones de euros)</label>
+              <input id="admin-cash" type="number" min="0" value="0" required>
+              <div class="admin-positions">
+                <label>Porteros <input id="admin-GK" type="number" min="1" max="15" value="2" required></label>
+                <label>Defensas <input id="admin-DEF" type="number" min="1" max="15" value="5" required></label>
+                <label>Centrocampistas <input id="admin-MID" type="number" min="1" max="15" value="5" required></label>
+                <label>Delanteros <input id="admin-FWD" type="number" min="1" max="15" value="3" required></label>
+              </div>
+              <label for="admin-date">Fecha prevista del primer mercado (borrador)</label>
+              <input id="admin-date" type="date" required>
+              <div id="admin-combined-section" hidden>
+                <p>Se reservarán 15 futbolistas para el mercado antes del reparto. Si falla el equilibrio o falta un dato, no se guardará nada. No se abrirán pujas.</p>
+                <label><input type="checkbox" id="admin-combined-confirm"> Confirmo el arranque completo de los 16 equipos con estos parámetros.</label>
+              </div>
+              <button type="submit" id="admin-form-submit">Simular reparto</button>
+            </form>
+            <div id="admin-preview" hidden>
+              <h3>3. Revisar reparto</h3><p id="admin-summary"></p>
+              <ul id="admin-team-list"></ul>
+              <h3>Primer mercado: 15 jugadores</h3><ul id="admin-market-list"></ul>
+              <label><input type="checkbox" id="admin-confirm"> He revisado los 16 equipos y deseo confirmar el reparto.</label>
+              <button id="admin-apply" type="button">Repartir y preparar mercado</button>
+              <p>El mercado quedará en borrador. No se abrirán pujas desde aquí.</p>
+            </div>
           </div>
         </section>
 
@@ -137,13 +228,13 @@
           <button type="button" data-view="rules"><span aria-hidden="true">📖</span><small>Normas</small></button>
           <button type="button" data-view="cup"><span aria-hidden="true">🏆</span><small>Copa</small></button>
           <button type="button" data-view="standings"><span aria-hidden="true">📊</span><small>Clasificación</small></button>
-          <button type="button" data-view="admin"><span aria-hidden="true">⚙</span><small>Admin</small></button>
+          <button type="button" data-view="admin" id="admin-nav" hidden><span aria-hidden="true">⚙</span><small>Admin</small></button>
         </nav>
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=10"></script>
+  <script type="module" src="./app.js?v=17"></script>
 </body>
 </html>
