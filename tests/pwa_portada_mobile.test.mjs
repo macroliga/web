@@ -39,7 +39,7 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v6/);
+  assert.match(worker, /macroliga-pwa-estatica-v7/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);
@@ -69,4 +69,14 @@ test('la política CSP permite solo scripts propios y API propia de MACROLIGA', 
   assert.match(html, /script-src 'self'/);
   assert.match(html, /connect-src 'self' https:\/\/xuwjbfnhvvbdargcohfe\.supabase\.co/);
   assert.match(worker, /'\.\/session\.mjs'/);
+});
+
+test('PIN compatible con gestor de contraseñas y opción explícita', () => {
+  assert.match(html, /id="login-username"[^>]+autocomplete="username"/);
+  assert.match(html, /id="password"[^>]+autocomplete="current-password"/);
+  assert.match(html, /id="remember-pin" type="checkbox" checked/);
+  assert.match(html, /Guardar mi PIN en el gestor de contraseñas/);
+  assert.match(app, /solicitarGuardadoPin\(/);
+  assert.match(app, /if \(recordarPin.checked\)/);
+  assert.match(worker, /'\.\/gestor-pin\.mjs'/);
 });
