@@ -34,3 +34,16 @@ No se ha tocado Comunio Laviana.
 9. Los PIN de seis cifras se reservan para la liga de ensayo. Para managers reales se revisarán el control de intentos y recuperación de acceso.
 
 **Estado actual: se ha terminado hasta el paso 1 de despliegue. No consta que se haya creado el token ni ejecutado la función.**
+
+## Corrección de permisos 403 — 26/11/2026
+
+La primera prueba `{"action":"preview"}` llegó a la función, validó correctamente el secreto y devolvió **HTTP 403 al consultar `/rest/v1/competitions`**. La causa real fue que el rol `service_role` no tenía privilegio directo `SELECT` sobre las tablas públicas privadas. Ese cierre es intencional y **no se ha levantado**.
+
+- Aplicada la migración `supabase/migrations/202611260002_alta_piloto_rpc_privadas.sql`.
+- Creadas cuatro RPC `SECURITY DEFINER` delimitadas a preflight, preparación, vinculación y reversión del piloto. Solo `service_role` puede ejecutarlas; `anon` y `authenticated` carecen de permiso.
+- Confirmado con `SET LOCAL ROLE service_role` que `macroliga_piloto_estado_alta()` devuelve `libre:true`, `usuarios_auth:0`, `equipos:0`.
+- Confirmado después de la migración que `service_role` sigue sin `SELECT` o `INSERT` directo en las tablas `competitions`, `managers` y `teams`.
+- Actualizada la función `macroliga-alta-piloto` para usar únicamente las nuevas RPC; la comprobación de privacidad acepta HTTP 403 (acceso denegado) como resultado correcto.
+- No se ha ejecutado el alta de usuarios. Debe repetirse primero el `preview`; no cambiar el secreto.
+
+**Limitación aún por comprobar:** el flujo completo de las 16 cuentas y los dos logins reales no está probado. Un `preview` correcto valida preflight, no garantiza el alta posterior. Ante errores de creación, seguir las indicaciones de `limpieza_completa` y no repetir si queda algún residuo.
