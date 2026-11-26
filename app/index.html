@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-release="18">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=13">
+  <link rel="stylesheet" href="./styles.css?v=14">
 </head>
 <body>
   <div class="shell">
@@ -70,6 +70,17 @@
             </span>
             <span class="right-chevron" aria-hidden="true">›</span>
           </button>
+
+          <section class="league-status-card" aria-labelledby="league-status-title">
+            <h2 id="league-status-title">Estado de la liga</h2>
+            <div class="league-summary">
+              <button type="button" data-view="standings"><strong id="home-manager-count">—</strong><small>Managers</small></button>
+              <button type="button" data-view="market"><strong id="home-catalog-state">—</strong><small>Catálogo</small></button>
+              <button type="button" data-view="market"><strong id="home-market-count">—</strong><small>Mercado</small></button>
+            </div>
+            <p id="home-league-status" role="status">Consultando datos de tu división…</p>
+            <button type="button" id="admin-home" data-view="admin" hidden>⚙ Administrar arranque de la liga</button>
+          </section>
 
           <section class="features" aria-label="Menús principales">
             <button type="button" class="tile tile-clauses" data-view="clauses">
@@ -233,8 +244,9 @@
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
+    <div class="release-info"><span>Aplicación piloto · versión 18</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=17"></script>
+  <script type="module" src="./app.js?v=18"></script>
 </body>
 </html>

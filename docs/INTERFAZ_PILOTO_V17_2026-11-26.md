@@ -25,3 +25,15 @@ Pruebas: 155/155 en desarrollo y 139/139 en el árbol acotado de publicación;
 sintaxis correcta; Chromium Pixel 7 con diez etapas de Auth y API ficticias,
 incluidas las nuevas pantallas, permiso administrativo y patrimonio después
 del arranque. No se utilizan PIN ni fixtures reales.
+
+## Actualización v18
+Estado de la división visible en Inicio: 16 managers registrados, catálogo
+pendiente y 0/15 lotes cuando la API devuelve esos valores. No se simulan
+datos. Acceso administrativo directo solo tras autorización. Actualización
+manual y recuperación de HTML obsoleto sin borrar la sesión; sin cambios
+de Auth, datos o activación del juego.
+
+Se verificaron las RPC del piloto con rol autenticado en transacción de
+solo lectura: clasificación 16 a cero, plantilla y catálogo/mercado vacíos,
+arranque válido. 155 pruebas de desarrollo y 13 etapas Chromium móvil
+(incluye versión obsoleta, renovación única, actualización manual).
