@@ -14,7 +14,7 @@ test('login privado separado de menús, requiere nombre y PIN', () => {
   assert.match(html, /id="password"[^>]+type="password"/);
   assert.match(html, /pattern="\[0-9\]\{6\}"/);
   assert.doesNotMatch(html, /Acceso de managers/);
-  assert.match(app, /cliente\.iniciarSesion\(cuenta\.correo, pin\.value\)/);
+  assert.match(app, /cliente\.iniciarSesionConSesion\(cuenta\.correo, pin\.value\)/);
   assert.match(app, /privateView\.hidden = false/);
   assert.match(app, /loginView\.hidden = true/);
 });
@@ -39,9 +39,34 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v5/);
+  assert.match(worker, /macroliga-pwa-estatica-v6/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);
   assert.doesNotMatch(worker, /auth\/v1\/token/);
+});
+
+test('botón Salir discreto fuera de Mi equipo y sesión recuperable', () => {
+  assert.match(html, /id="logout-button"[^>]+class="logout-mini"/);
+  assert.match(styles, /\.logout-mini\{position:fixed/);
+  assert.match(app, /async function restaurarSesion\(\)/);
+  assert.match(app, /cliente\.renovarSesion\(guardada\.refreshToken\)/);
+  assert.match(app, /guardarSesion\(storage, cuenta\.correo, nuevaSesion\.refreshToken\)/);
+  assert.match(app, /olvidarSesion\(storage\)/);
+  assert.match(app, /recordarEntrenador\(storage, cuenta\.correo\)/);
+});
+
+test('la sesión oculta del navegador no revela datos sin autenticarse', () => {
+  assert.match(html, /id="private-view" hidden/);
+  assert.match(html, /id="top-balance" hidden/);
+  assert.match(app, /privateView\.hidden = true/);
+  assert.match(app, /topBalance\.hidden = true/);
+  assert.match(app, /mostrarAcceso\(\);\s*if \(cliente\) void restaurarSesion\(\);/);
+});
+
+test('la política CSP permite solo scripts propios y API propia de MACROLIGA', () => {
+  assert.match(html, /Content-Security-Policy/);
+  assert.match(html, /script-src 'self'/);
+  assert.match(html, /connect-src 'self' https:\/\/xuwjbfnhvvbdargcohfe\.supabase\.co/);
+  assert.match(worker, /'\.\/session\.mjs'/);
 });
