@@ -100,3 +100,61 @@ test('fallo de login y fallo de permiso se informan sin entregar datos', async (
   await assert.rejects(client.iniciarSesion('invalido@example.invalid','clave'), /No se pudo completar el acceso/);
   await assert.rejects(client.consultar('macroliga_plantilla_equipo',{p_equipo_id:'ajeno'},'jwt'), /No se pudo completar el acceso/);
 });
+
+test('inicio de sesión guardable devuelve refresh token distinto del PIN', async () => {
+  const calls = [];
+  const api = crearCliente({
+    supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey:'sb_publishable_ficticia',
+    fetchImpl:async(url,options)=>{
+      calls.push({url,options});
+      return {ok:true,json:async()=>({
+        access_token:'jwt-test-a',refresh_token:'refresh-token-a-largo-para-ensayos',
+        expires_in:3600
+      })};
+    }
+  });
+  const result=await api.iniciarSesionConSesion('demo01@macroliga.invalid','123456');
+  assert.deepEqual(result,{
+    accessToken:'jwt-test-a',
+    refreshToken:'refresh-token-a-largo-para-ensayos',
+    expiresIn:3600
+  });
+  assert.equal(calls.length,1);
+  assert.match(calls[0].url,/grant_type=password$/);
+  assert.equal(calls[0].options.headers.Authorization,undefined);
+});
+
+test('la recuperación automática usa refresh token y no vuelve a solicitar PIN', async () => {
+  const calls=[];
+  const api=crearCliente({
+    supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey:'sb_publishable_ficticia',
+    fetchImpl:async(url,options)=>{
+      calls.push({url,body:JSON.parse(options.body),headers:options.headers});
+      return {ok:true,json:async()=>({
+        access_token:'jwt-renovado',
+        refresh_token:'refresh-rotado-con-valor-aleatorio-de-prueba',
+        expires_in:3599
+      })};
+    }
+  });
+  const renovado=await api.renovarSesion('refresh-original-de-mas-de-veinte-caracteres');
+  assert.equal(renovado.accessToken,'jwt-renovado');
+  assert.equal(renovado.refreshToken,'refresh-rotado-con-valor-aleatorio-de-prueba');
+  assert.equal(calls.length,1);
+  assert.match(calls[0].url,/grant_type=refresh_token$/);
+  assert.deepEqual(Object.keys(calls[0].body),['refresh_token']);
+  assert.ok(!JSON.stringify(calls[0]).includes('123456'));
+  assert.equal(calls[0].headers.Authorization,undefined);
+});
+
+test('un refresh token inválido no genera un inicio de sesión artificial', async () => {
+  const api=crearCliente({
+    supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey:'sb_publishable_ficticia',
+    fetchImpl:async()=>({ok:false,status:401,json:async()=>({error:'invalid_grant'})})
+  });
+  await assert.rejects(api.renovarSesion('refresh-original-de-mas-de-veinte-caracteres'),
+    (err)=>err.status===401 && /credenciales/.test(err.message));
+});
