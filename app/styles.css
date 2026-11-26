@@ -162,10 +162,35 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 #lineup-panel[hidden]{display:none}
 #lineup-panel h3{margin:.3rem 0}
 #lineup-panel p{margin:0;color:#516975;font-size:14px}
-.lineup-slots{display:grid;gap:.55rem}
-.lineup-slots label{display:grid;gap:.2rem;font-size:13px;font-weight:700}
-.lineup-slots select{min-width:0;width:100%;padding:.7rem;border:1px solid #aec1c9;border-radius:9px;background:white;color:#163845;font:inherit}
+/* Campo táctico: césped, marcas y once plazas táctiles, sin imágenes. */
+.lineup-controls{display:grid;gap:.55rem}
+.lineup-toolbar{display:flex;align-items:end;justify-content:space-between;gap:8px}
+.lineup-toolbar label{display:grid;gap:4px;font-size:11px;font-weight:800;color:#516975}
+#lineup-formation{padding:9px 12px;border:1px solid #aec1c9;border-radius:9px;background:white;color:#163845;font-weight:800;font-size:15px}
+#lineup-count{font-size:15px;color:#166456}
+#lineup-panel #lineup-positions{font-size:12px;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
+.lineup-slots{position:relative;isolation:isolate;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;min-height:348px;aspect-ratio:4 / 5;padding:14px 8px;border:1px solid #1c7047;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(0deg,#1f784b 0%,#1f784b 12.5%,#246f48 12.5%,#246f48 25%)}
+.lineup-slots::before{content:"";position:absolute;inset:7px;border:1px solid #d2ebd99c;border-radius:4px;background:linear-gradient(to bottom,transparent calc(50% - .5px),#d2ebd99c calc(50% - .5px),#d2ebd99c calc(50% + .5px),transparent calc(50% + .5px));z-index:-1;pointer-events:none}
+.lineup-slots::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24%;aspect-ratio:1;border:1px solid #d2ebd99c;border-radius:50%;z-index:-1;pointer-events:none}
+.pitch-row{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;position:relative}
+.pitch-row:first-child::before,.pitch-row:last-child::before{content:"";position:absolute;width:50%;height:58%;left:25%;border:1px solid #d2ebd99c;z-index:-1;pointer-events:none}
+.pitch-row:first-child::before{top:-7px;border-top:0}
+.pitch-row:last-child::before{bottom:-7px;border-bottom:0}
+.pitch-slot{position:relative;display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;max-width:90px;min-width:0;height:80px;gap:4px;text-align:center;cursor:pointer;border-radius:8px}
+.pitch-marker{display:grid;place-items:center;width:35px;height:35px;border-radius:50%;background:#143b2ab9;border:1px dashed #e2f3e4;color:white;font-size:23px;font-weight:800;box-shadow:0 3px 8px #0c332a48}
+.pitch-slot[data-filled=true] .pitch-marker{background:#f6edce;color:#203c31;border:1px solid #fff;font-size:11px}
+.pitch-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0;max-width:100%;padding:2px 3px;border-radius:5px;background:#143e2ee8;color:#fff;font-size:11px;font-weight:750;line-height:1.15;overflow-wrap:anywhere}
+.pitch-slot:not([data-filled=true]) .pitch-name{font-weight:600}
+.pitch-slot select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pitch-slot:focus-within{outline:2px solid #fff;outline-offset:1px;background:#ffffff20}
+.pitch-slot:has(select:disabled){cursor:default}
+.pitch-slot select:disabled{cursor:default}
+.lineup-extras{display:grid;gap:6px;padding:10px;background:#fff4d7;border-radius:9px;font-size:12px}
+.lineup-extra{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#lineup-panel #lineup-validation{font-size:12px;color:#516975}
+@media(max-width:350px){.lineup-slots{padding:13px 6px}.pitch-row{gap:2px}.pitch-marker{width:30px;height:30px}.pitch-name{font-size:10px;padding:2px}.lineup-toolbar{align-items:center}}
 #lineup-panel button:not(.primary-button){padding:.65rem;border:1px solid #b2c8ce;background:#f1f6f8;color:#254b5d;border-radius:9px}
 #lineup-panel button[hidden]{display:none}
 #lineup-fixtures{padding-left:1.1rem;font-size:14px;color:#345560}
 .roster-market-button{border:1px solid #b2c8ce;border-radius:10px;background:#e9f5f5;color:#16616c;padding:7px 9px;font-size:11px;font-weight:800;min-height:37px}
+

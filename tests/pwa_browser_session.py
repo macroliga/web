@@ -113,15 +113,16 @@ class Auth:
             return respond('listing1')
         if path.endswith('macroliga_estado_alineacion'):
             assert body == {'p_division_id':'division-prueba'}
-            return respond({'jornada_id':'round14' if self.confirmed_round else None,'numero':14 if self.confirmed_round else None,'limite':'2026-11-27T20:00:00Z' if self.confirmed_round else None,'editable':self.confirmed_round and self.lineup_open,'plantilla':[{'id':'p1','nombre':'Portero ficticio','posicion':'GK','club':'Prueba','activo':True}],
+            return respond({'jornada_id':'round14' if self.confirmed_round else None,'numero':14 if self.confirmed_round else None,'limite':'2026-11-27T20:00:00Z' if self.confirmed_round else None,'editable':self.confirmed_round and self.lineup_open,'plantilla':[{'id':'p1','nombre':'Portero ficticio','posicion':'GK','club':'Prueba','activo':True}] + [{'id':f'{pos}{i}','nombre':f'{pos} ficticio {i}','posicion':pos,'club':'Prueba','activo':True} for pos,n in [('GK',1),('DEF',5),('MID',5),('FWD',3)] for i in range(n)],
                 'partidos':[{'local':'Club A','visitante':'Club B','inicio':'2026-11-27T20:00:00Z','estado':'TIMED'}] if self.confirmed_round else [],'slots':self.official_slots,'version':self.official_version,'borrador':{'version':self.lineup_version,'slots':self.lineup_slots} if self.lineup_version else None})
         if path.endswith('macroliga_guardar_alineacion'):
             assert body['p_division_id']=='division-prueba'
-            assert body['p_slots']==['p1']+[None]*10
             if body['p_jornada_id']=='round14':
+                assert body['p_slots']==['p1']+[f'DEF{i}' for i in range(3)]+[f'MID{i}' for i in range(5)]+[f'FWD{i}' for i in range(2)]
                 assert self.lineup_open and body['p_version']==self.official_version
                 self.official_slots=body['p_slots'];self.official_version+=1;return respond(self.official_version)
             assert body['p_jornada_id'] is None and body['p_version']==self.lineup_version
+            assert body['p_slots']==['p1']+[None]*10
             self.lineup_slots=body['p_slots'];self.lineup_version+=1;return respond(self.lineup_version)
         if path.endswith('macroliga_catalogo_division'):
             assert body['p_division_id']=='division-prueba' and body['p_despues'] is None and body['p_limite'] in (1,250)
@@ -168,8 +169,9 @@ def run(source):
             def do_GET(self):
                 # HTML obsoleto en primera navegación, módulo actual; el
                 # parámetro de versión devuelve el HTML vigente.
-                if self.path.startswith('/app/?stale=1') and 'release=21' not in self.path:
-                    old=(web/'app/index.html').read_text().replace('data-release="21"','data-release="18"').replace('app.js?v=21','app.js?v=18')
+                if self.path.startswith('/app/?stale=1') and 'release=22' not in self.path:
+                    old=(web/'app/index.html').read_text().replace('data-release="22"','data-release="18"').replace('app.js?v=22','app.js?v=18')
+                    old=old.replace('id="lineup-formation"','id="old-lineup-formation"')
                     body=old.encode()
                     self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
                     return
@@ -243,20 +245,38 @@ def run(source):
                 page.locator('.bottom-nav [data-view="home"]').click()
                 page.locator('[data-view="lineup"]').first.click()
                 expect(page.locator('#lineup-slots select')).to_have_count(11)
-                page.locator('#lineup-slots select').first.select_option('p1')
+                page.locator('#lineup-slots select[data-position=GK]').first.select_option('p1')
                 expect(page.locator('#lineup-count')).to_contain_text('1 / 11')
                 page.click('#lineup-save')
                 expect(page.locator('#lineup-message')).to_contain_text('Borrador guardado')
                 page.locator('.bottom-nav [data-view="home"]').click()
                 page.locator('[data-view="lineup"]').first.click()
-                expect(page.locator('#lineup-slots select').first).to_have_value('p1')
+                expect(page.locator('#lineup-slots select[data-position=GK]').first).to_have_value('p1')
                 private(page)
                 assert auth.password_calls == 1
                 auth.confirmed_round=True
                 page.click('#lineup-reload')
                 expect(page.locator('#lineup-status')).to_contain_text('Jornada 14')
                 expect(page.locator('#lineup-fixtures')).to_contain_text('Club A')
-                expect(page.locator('#lineup-slots select').first).to_have_value('p1')
+                expect(page.locator('#lineup-slots select[data-position=GK]').first).to_have_value('p1')
+                expect(page.locator('#lineup-save')).to_be_disabled()
+                page.select_option('#lineup-formation','3-5-2')
+                expect(page.locator('#lineup-slots select[data-position=DEF]')).to_have_count(3)
+                expect(page.locator('#lineup-slots select[data-position=MID]')).to_have_count(5)
+                expect(page.locator('#lineup-slots select[data-position=FWD]')).to_have_count(2)
+                for pos,n in [('DEF',3),('MID',5),('FWD',2)]:
+                    for i in range(n):
+                        page.locator(f'#lineup-slots select[data-position={pos}]').nth(i).select_option(f'{pos}{i}')
+                expect(page.locator('#lineup-count')).to_contain_text('11 / 11')
+                expect(page.locator('#lineup-save')).to_be_enabled()
+                # Cambiar a un esquema incompatible no borra los jugadores.
+                page.select_option('#lineup-formation','4-4-2')
+                expect(page.locator('#lineup-formation')).to_have_value('4-4-2')
+                expect(page.locator('#lineup-extras')).to_contain_text('MID ficticio 4')
+                expect(page.locator('#lineup-save')).to_be_disabled()
+                page.select_option('#lineup-formation','3-5-2')
+                expect(page.locator('#lineup-extras')).to_be_hidden()
+                expect(page.locator('#lineup-count')).to_contain_text('11 / 11')
                 page.click('#lineup-save')
                 expect(page.locator('#lineup-message')).to_contain_text('Alineación guardada para la jornada 14')
                 auth.lineup_open=False
@@ -328,8 +348,8 @@ def run(source):
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v21'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v21").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v22'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v22").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)
@@ -355,12 +375,12 @@ def run(source):
                 calls=auth.password_calls
                 page.click('#app-refresh')
                 private(page)
-                assert auth.password_calls==calls and 'release=21' in page.url
+                assert auth.password_calls==calls and 'release=22' in page.url
                 assert_saved(page)
-                print('PASS actualización manual v21 conserva acceso y sesión',flush=True)
+                print('PASS actualización manual v22 conserva acceso y sesión',flush=True)
                 before_refresh=auth.refresh_calls
                 page.goto(url+'?stale=1',wait_until='domcontentloaded')
-                page.wait_for_url('**release=21')
+                page.wait_for_url('**release=22')
                 private(page)
                 assert auth.password_calls==calls and auth.refresh_calls==before_refresh+1
                 assert_saved(page)
