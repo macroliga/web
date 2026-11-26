@@ -1,6 +1,7 @@
 import { crearCliente } from './api.mjs';
 import { euros } from './logic.mjs';
 import { cuentasDemostracion } from './entrenadores.mjs';
+import { solicitarGuardadoPin } from './gestor-pin.mjs';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
   sesionRecordada, olvidarSesion, SESION_KEY } from './session.mjs';
 
@@ -11,6 +12,8 @@ const privateView = el('private-view');
 const loginForm = el('login-form');
 const entrenador = el('manager-select');
 const pin = el('password');
+const aliasGestor = el('login-username');
+const recordarPin = el('remember-pin');
 const loginButton = el('login-button');
 const loginMessage = el('login-message');
 const teamView = el('team-view');
@@ -138,6 +141,18 @@ for (const cuenta of cuentas) {
 if (nombreGuardado && cuentas.some((c) => c.correo === nombreGuardado)) {
   entrenador.value = nombreGuardado;
 }
+aliasGestor.value = entrenador.value;
+// El gestor del móvil usa un campo de usuario convencional, pero el usuario
+// sigue eligiendo su nombre en el selector visible de MACROLIGA.
+entrenador.addEventListener('change', () => {
+  aliasGestor.value = entrenador.value;
+  pin.value = '';
+});
+aliasGestor.addEventListener('input', () => {
+  if (cuentas.some((c) => c.correo === aliasGestor.value)) {
+    entrenador.value = aliasGestor.value;
+  }
+});
 pin.addEventListener('input', () => {
   pin.value = pin.value.replace(/\D/g, '').slice(0, 6);
 });
@@ -148,9 +163,17 @@ for (const boton of document.querySelectorAll('[data-view]')) {
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!cliente || token) return;
+  // Algunos navegadores rellenan el usuario automáticamente sin disparar
+  // un evento: recuperamos el alias solo si pertenece a los 16 autorizados.
+  if (aliasGestor.value !== entrenador.value &&
+      cuentas.some((c) => c.correo === aliasGestor.value)) {
+    entrenador.value = aliasGestor.value;
+  }
+  aliasGestor.value = entrenador.value;
   const cuenta = cuentas.find((c) => c.correo === entrenador.value);
   if (!cuenta) { aviso('Selecciona tu entrenador.'); return; }
   if (!/^\d{6}$/.test(pin.value)) { aviso('Introduce un PIN de seis cifras.'); return; }
+  const pinIntroducido = pin.value;
   const numeroIntento = ++intento;
   loginButton.disabled = true;
   aviso('Comprobando PIN…');
@@ -168,6 +191,17 @@ loginForm.addEventListener('submit', async (event) => {
     // Solo se conserva el refresh token, nunca el PIN.
     guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
     pintarEquipo(equipo, jugadores);
+    if (recordarPin.checked) {
+      // Se solicita al gestor de contraseñas del dispositivo, nunca al
+      // almacenamiento local de MACROLIGA; puede pedir confirmación.
+      void solicitarGuardadoPin({
+        navegador: navigator,
+        PasswordCredentialCtor: window.PasswordCredential,
+        correo: cuenta.correo,
+        nombre: cuenta.entrenador,
+        pin: pinIntroducido
+      });
+    }
     mostrarAplicacion();
   } catch (error) {
     if (nuevaSesion?.accessToken) await cliente.cerrarSesion(nuevaSesion.accessToken);
