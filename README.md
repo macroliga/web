@@ -76,8 +76,16 @@ npm run market:dry-run # requiere configuración de lectura segura
 
 - Verificación SQL reversible repetida con tres managers ficticios y dos divisiones, sin residuos.
 - Cliente web corregido para separar clave pública de JWT individual.
-- Preparado `npm run test:acceso-real` para dos cuentas **de ensayo creadas mediante Supabase Auth**, sin exponer contraseñas ni claves privadas. La prueba HTTP completa **aún no se ha ejecutado** porque esas cuentas no están provisionadas.
+- Preparado `npm run test:acceso-real` para dos cuentas **de ensayo creadas mediante Supabase Auth**, sin exponer contraseñas ni claves privadas. La función de alta comprobó dos inicios de sesión reales; quedan pendientes las pruebas de navegación de la PWA.
 - [Procedimiento y límites de la prueba](docs/PRUEBA_ACCESO_REAL_Y_PRIVACIDAD_2026-11-26.md).
+
+## Alta de los 16 entrenadores — REALIZADA el 26/11/2026
+
+**Comprobado directamente en Supabase `macroliga-piloto`:** 16 usuarios Auth confirmados, 16 managers, 16 equipos vinculados a una división piloto, 0 futbolistas en plantillas, 0 movimientos de saldo y 2 cuentas con inicio de sesión registrado. No hay cuentas sin vincular ni equipos asociados a managers incorrectos.
+
+**Seguridad posterior:** Edge Function `macroliga-alta-piloto` reemplazada por un manejador inerte que devuelve HTTP 410, `verify_jwt=true`; eliminadas las cuatro RPC administrativas temporales mediante `202611260003_cerrar_alta_piloto.sql`. El usuario debe eliminar manualmente el secreto `MACROLIGA_SETUP_TOKEN` de **Edge Functions > Secrets**. Los PIN solo están en el archivo privado que guarda el usuario, no en GitHub ni en el chat.
+
+**Próximo paso:** validación visual de acceso desde PWA y diseño/aprobación del reparto de jugadores y saldos. No hay mercado operativo todavía. Comunio Laviana no se ha modificado.
 
 ## Entrenadores históricos de ensayo (26/11/2026)
 
@@ -87,7 +95,7 @@ Se ha preparado una lista de 16 entrenadores históricos como **alias ficticios*
 - Simulación sin cambios: `npm run demo:preview`.
 - Alta real desde equipo administrativo seguro: `npm run demo:create` (exige credencial privada de MACROLIGA y confirmación expresa).
 - [Procedimiento completo](docs/16_ENTRENADORES_HISTORICOS_PILOTO_2026-11-26.md).
-- **Todavía no se han creado las cuentas Auth**: el conector actual no proporciona administración de usuarios ni una credencial de servicio, y no se introducirán contraseñas manualmente en tablas internas.
+- **Las 16 cuentas Auth y sus equipos ya están creados y comprobados.** El alta se realizó con la función temporal de Supabase, ya desactivada.
 
 ## Pendiente antes de dar acceso a managers reales
 
