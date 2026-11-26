@@ -21,7 +21,7 @@ function comprobarIdentidad() {
       new Set(LISTA.map((cuenta) => cuenta.entrenador)).size !== 16) {
     throw new Error('Lista incorrecta o con cuentas duplicadas');
   }
-  if (process.argv.some((opcion) => !['--apply', '--dry-run'].includes(opcion))) {
+  if (process.argv.slice(2).some((opcion) => !['--apply', '--dry-run'].includes(opcion))) {
     throw new Error('Argumentos permitidos: --dry-run y --apply');
   }
 }
