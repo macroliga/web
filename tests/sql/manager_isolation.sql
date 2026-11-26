@@ -41,7 +41,7 @@ do $$ begin
  if exists(select 1 from public.macroliga_mis_equipos()) or exists(select 1 from public.macroliga_mi_plantilla('00000000-0000-4000-8000-000000000031')) then raise exception 'unlinked identity leak'; end if;
 end $$;
 -- Verify effective direct-table denial, not just RPC filtering.
-do $
+do $$
 declare rel text;
 begin
  foreach rel in array array['teams','managers','roster_ownership','players','divisions'] loop
@@ -56,7 +56,7 @@ reset role;
 set local role anon;
 select set_config('request.jwt.claim.sub','',true);
 select set_config('request.jwt.claims','{"role":"anon"}',true);
-do $
+do $$
 declare rel text;
 begin
  foreach rel in array array['teams','managers','roster_ownership','players','divisions'] loop
@@ -78,7 +78,7 @@ begin
  end;
 end $;
 reset role;
-do $
+do $$
 begin
  if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
  where n.nspname='public' and c.relname in ('teams','managers','roster_ownership','players','divisions') and c.relrowsecurity) <> 5 then
@@ -86,4 +86,9 @@ begin
  end if;
 end $;
 rollback;
-select 'manager isolation assertions passed' as result;
+do $ begin
+ if exists(select 1 from auth.users where id in ('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003')) or exists(select 1 from public.competitions where id='00000000-0000-4000-8000-000000000010') then
+ raise exception 'fixture rollback failed';
+ end if;
+end $;
+select 'manager isolation and rollback assertions passed' as result;
