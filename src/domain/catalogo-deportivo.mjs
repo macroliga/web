@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 export const POSICIONES = Object.freeze(['GK','DEF','MID','FWD']);
 const MAX_BIGINT = 9223372036854775807n;
+export const PUBLIC_HTML_REF = 'Operador MACROLIGA: uso privado de campos factuales HTML públicos; licencia del proveedor no acreditada.';
 export const orden = (a,b) => a < b ? -1 : a > b ? 1 : 0;
 export const huella = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -30,14 +31,17 @@ function fecha(value) {
   }
   return value;
 }
-export function normalizarCatalogo(raw, {allowDiagnostic=false}={}) {
+export function normalizarCatalogo(raw, {allowDiagnostic=false,allowPublicHtml=false}={}) {
   if (!raw || raw.schemaVersion !== 1 || raw.currency !== 'EUR') throw new TypeError('Versión o moneda de catálogo inválida');
-  if (!['authorized','fixture',...(allowDiagnostic?['diagnostic']:[])].includes(raw.kind)) throw new TypeError('Origen de catálogo no declarado');
+  if (!['authorized','fixture',...(allowDiagnostic?['diagnostic']:[]),...(allowPublicHtml?['public-html']:[])].includes(raw.kind)) throw new TypeError('Origen de catálogo no declarado');
   const provider = texto(raw.provider,'proveedor',100);
   const competition = texto(raw.competition,'competición',80);
   const season = texto(raw.season,'temporada',50);
   const asOf = fecha(raw.asOf);
-  const permissionRef = texto(raw.permissionRef,'referencia de autorización',500);
+  const permissionRef = texto(raw.permissionRef,'referencia de autorización/procedencia',500);
+  if(raw.kind==='public-html'&&(provider!=='comuniazo'||competition!=='LALIGA'||season!=='2026_27'||permissionRef!==PUBLIC_HTML_REF)) {
+    throw new Error('Procedencia HTML pública incompatible');
+  }
   if (!Array.isArray(raw.players) || raw.players.length === 0 || raw.players.length > 20000) {
     throw new TypeError('Catálogo vacío o excesivo');
   }

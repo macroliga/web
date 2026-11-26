@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizarCatalogo, verificarCatalogo, centimos } from '../src/domain/catalogo-deportivo.mjs';
+import { normalizarCatalogo, verificarCatalogo, centimos, PUBLIC_HTML_REF } from '../src/domain/catalogo-deportivo.mjs';
 import { planificarReparto, verificarReparto } from '../src/domain/reparto-inicial.mjs';
 import { catalogoFicticio, divisionFicticia } from '../src/demo/catalogo-ficticio.mjs';
 import { descargarCatalogo } from '../src/server/descarga-catalogo.mjs';
@@ -139,4 +139,15 @@ test('no asigna futbolistas de valor cero y exige reserva de elegibles',()=>{
   assert.ok(p.allocations.flatMap(t=>t.players).every(x=>BigInt(x.marketValueCents)>0n));
   for(const x of raw.players) x.marketValueCents='0';
   assert.throws(()=>planificarReparto(normalizarCatalogo(raw),division,options),/reserva/);
+});
+
+test('HTML público: procedencia explícita sin declarar licencia; no aceptado por defecto',()=>{
+  const raw={...clone(),kind:'public-html',provider:'comuniazo',permissionRef:PUBLIC_HTML_REF};
+  assert.throws(()=>normalizarCatalogo(raw),/Origen/);
+  const snapshot=normalizarCatalogo(raw,{allowPublicHtml:true});
+  assert.equal(snapshot.kind,'public-html');
+  assert.throws(()=>verificarCatalogo(snapshot),/Origen/);
+  assert.deepEqual(verificarCatalogo(snapshot,{allowPublicHtml:true}),snapshot);
+  assert.throws(()=>normalizarCatalogo({...raw,permissionRef:'autorización ficticia'},{allowPublicHtml:true}),/Procedencia/);
+  assert.throws(()=>normalizarCatalogo({...raw,provider:'otro'},{allowPublicHtml:true}),/Procedencia/);
 });

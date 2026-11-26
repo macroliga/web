@@ -26,6 +26,8 @@ CLUBS = frozenset(TEAMS + slug for slug in (
 ))
 POSITIONS = {"porteros": "GK", "defensas": "DEF", "centrocampistas": "MID", "delanteros": "FWD"}
 MAX_BYTES = 8 * 1024 * 1024
+# Procedencia, no licencia de la web. Solo para uso privado de MACROLIGA.
+PUBLIC_HTML_REF = "Operador MACROLIGA: uso privado de campos factuales HTML públicos; licencia del proveedor no acreditada."
 
 def norm(s):
     return "".join(c for c in unicodedata.normalize("NFD", s.casefold()) if unicodedata.category(c) != "Mn").strip()
@@ -157,11 +159,13 @@ def extract_table(soup, minimum):
         data[key]={"name":name,"marketValueCents":value,"points":int(points)}
     return data
 
-def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnostic=False):
+def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnostic=False, public_html=False):
     """Un único lote diario consolidado: índice, 20 clubes, general, 4 filtros.
     Rechaza el lote entero si falta un club, precio, ficha o posición de un activo.
     """
-    if not isinstance(permission_ref,str) or not permission_ref.strip(): raise ValueError("Referencia de autorización obligatoria")
+    if not isinstance(permission_ref,str) or not permission_ref.strip(): raise ValueError("Referencia de procedencia obligatoria")
+    if public_html and (diagnostic or permission_ref != PUBLIC_HTML_REF):
+        raise ValueError("Procedencia HTML pública incompatible")
     # No usar rutas alternativas para eludir errores de acceso, límites o
     # indisponibilidad del servidor. El fallback se limita a HTML válido
     # cuyo índice no trae enlaces, comprobando las 20 fichas públicas.
@@ -211,7 +215,7 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnosti
     for key,p in previous_by_id.items():
         if key not in membership:
             active.append({**p,"active":False})
-    snapshot={"schemaVersion":1,"kind":"diagnostic" if diagnostic else "authorized","provider":"comuniazo","competition":"LALIGA","season":SEASON,"currency":"EUR","asOf":stamp,"permissionRef":permission_ref,"players":sorted(active,key=lambda p:p["externalId"])}
+    snapshot={"schemaVersion":1,"kind":"diagnostic" if diagnostic else "public-html" if public_html else "authorized","provider":"comuniazo","competition":"LALIGA","season":SEASON,"currency":"EUR","asOf":stamp,"permissionRef":permission_ref,"players":sorted(active,key=lambda p:p["externalId"])}
     new_by_id={p["externalId"]:p for p in active}
     diff={"previousAsOf":previous.get("asOf") if previous else None,
         "newPlayers":sum(k not in previous_by_id for k in membership),
