@@ -51,7 +51,7 @@ begin
   exception when insufficient_privilege then null;
   end;
  end loop;
-end $;
+end $$;
 reset role;
 set local role anon;
 select set_config('request.jwt.claim.sub','',true);
@@ -76,7 +76,7 @@ begin
   raise exception 'anon roster RPC unexpectedly allowed';
  exception when insufficient_privilege then null;
  end;
-end $;
+end $$;
 reset role;
 do $$
 begin
@@ -84,11 +84,11 @@ begin
  where n.nspname='public' and c.relname in ('teams','managers','roster_ownership','players','divisions') and c.relrowsecurity) <> 5 then
  raise exception 'RLS missing on protected table';
  end if;
-end $;
+end $$;
 rollback;
-do $ begin
+do $$ begin
  if exists(select 1 from auth.users where id in ('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003')) or exists(select 1 from public.competitions where id='00000000-0000-4000-8000-000000000010') then
  raise exception 'fixture rollback failed';
  end if;
-end $;
+end $$;
 select 'manager isolation and rollback assertions passed' as result;
