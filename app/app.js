@@ -1,6 +1,6 @@
 import { crearCliente } from './api.mjs';
 import { mercadoAbierto, equipoMaloAbierto, euros } from './logic.mjs';
-import { cuentasDemostracion } from '../src/demo/entrenadores_historicos.mjs';
+import { cuentasDemostracion } from './entrenadores.mjs';
 
 const buscar = (id) => document.getElementById(id);
 const entrenador = buscar('manager-select');
