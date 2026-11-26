@@ -81,8 +81,9 @@ npm run market:dry-run # requiere configuración de lectura segura
 
 ## Entrenadores históricos de ensayo (26/11/2026)
 
-Se ha preparado una lista de 16 entrenadores históricos como **alias ficticios** del piloto, y un programa para crear sus cuentas y equipos mediante Supabase Auth oficial, con contraseñas individuales aleatorias.
+Se ha preparado una lista de 16 entrenadores históricos como **alias ficticios** del piloto, y un programa para crear sus cuentas y equipos mediante Supabase Auth oficial, con **PIN individuales y aleatorios de seis cifras**, seleccionando el entrenador por su nombre en la PWA.
 
+- La pantalla de acceso ya tiene selector de entrenador y campo PIN de 6 cifras, como Comunio Laviana, conectada a la clave pública propia de MACROLIGA.
 - Simulación sin cambios: `npm run demo:preview`.
 - Alta real desde equipo administrativo seguro: `npm run demo:create` (exige credencial privada de MACROLIGA y confirmación expresa).
 - [Procedimiento completo](docs/16_ENTRENADORES_HISTORICOS_PILOTO_2026-11-26.md).
