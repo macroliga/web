@@ -72,6 +72,13 @@ npm run market:dry-run # requiere configuración de lectura segura
 - `tests/sql/20261125_ventas_managers_rollback.sql`
 - `datos/clausulas/README.md` y los CSV originales.
 
+## Preparado para prueba de acceso (26/11/2026)
+
+- Verificación SQL reversible repetida con tres managers ficticios y dos divisiones, sin residuos.
+- Cliente web corregido para separar clave pública de JWT individual.
+- Preparado `npm run test:acceso-real` para dos cuentas **de ensayo creadas mediante Supabase Auth**, sin exponer contraseñas ni claves privadas. La prueba HTTP completa **aún no se ha ejecutado** porque esas cuentas no están provisionadas.
+- [Procedimiento y límites de la prueba](docs/PRUEBA_ACCESO_REAL_Y_PRIVACIDAD_2026-11-26.md).
+
 ## Pendiente antes de dar acceso a managers reales
 
 - Validar la autorización de los usuarios en las llamadas desde la PWA y probar varios clientes concurrentes.
