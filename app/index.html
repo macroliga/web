@@ -20,11 +20,19 @@
     <section class="card login-card" aria-labelledby="login-title">
       <div class="card-head"><h2 id="login-title">Acceso de managers</h2><span id="connection-state" class="tiny"></span></div>
       <form id="login-form" class="login-form">
-        <label>Correo de acceso<input id="email" name="email" type="email" autocomplete="username" required></label>
-        <label>Contraseña<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+        <label for="manager-select">Entrenador
+          <select id="manager-select" name="entrenador" autocomplete="username" required>
+            <option value="">Selecciona tu entrenador</option>
+          </select>
+        </label>
+        <label for="password">PIN de 6 cifras
+          <input id="password" name="pin" type="password" autocomplete="current-password"
+            inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
+            placeholder="••••••" required>
+        </label>
         <div class="actions"><button type="submit" id="login-button">Entrar</button><button type="button" id="logout-button" hidden>Salir</button></div>
       </form>
-      <p id="login-message" class="hint" role="status" aria-live="polite">Todavía no se han creado las cuentas de los managers.</p>
+      <p id="login-message" class="hint" role="status" aria-live="polite">Selecciona tu entrenador e introduce tu PIN cuando se creen las cuentas de ensayo.</p>
     </section>
     <section class="card team-card" aria-labelledby="team-title">
       <div class="card-head"><h2 id="team-title">Mi equipo</h2><span id="team-division" class="tiny">Sin iniciar sesión</span></div>
