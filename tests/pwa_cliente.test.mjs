@@ -45,6 +45,8 @@ test('cliente usa identidad propia en RPC y bloquea otras operaciones', async ()
     anonKey:'clave-publica-ficticia',fetchImpl});
   const token = await api.iniciarSesion('ejemplo@example.invalid','clave-ficticia');
   assert.equal(token,'token-de-prueba');
+  assert.equal(peticiones[0].options.headers.Authorization, undefined);
+  assert.equal(peticiones[0].options.headers.apikey, 'clave-publica-ficticia');
   const perfil = await api.consultar('macroliga_mi_equipo',{},token);
   assert.deepEqual(perfil,[{equipo_id:'ficticio'}]);
   assert.equal(peticiones[1].options.headers.Authorization, 'Bearer token-de-prueba');
@@ -52,4 +54,49 @@ test('cliente usa identidad propia en RPC y bloquea otras operaciones', async ()
   await assert.rejects(api.consultar('borrar_todo',{},token),/Operacion no permitida/);
   await assert.rejects(api.consultar('macroliga_mi_equipo',{},null),/Debes iniciar sesion/);
   assert.equal(peticiones.length,2);
+});
+
+test('rechazar claves privadas en el navegador', () => {
+  assert.throws(() => crearCliente({
+    supabaseUrl: 'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey: 'sb_secret_NO_PUBLICAR'
+  }), /incompleta/);
+});
+
+test('cada usuario usa su propio JWT; las contrasenas no se envian a las RPC', async () => {
+  const peticiones = [];
+  const fetchImpl = async (url, options) => {
+    peticiones.push({url, options});
+    if (url.endsWith('grant_type=password')) {
+      const credentials = JSON.parse(options.body);
+      return { ok:true, json:async() => ({
+        access_token: credentials.email.includes('manager-a')
+          ? 'jwt-usuario-a' : 'jwt-usuario-b'
+      }) };
+    }
+    return { ok:true, json:async() => [{equipo_id:'demo'}] };
+  };
+  const client = crearCliente({
+    supabaseUrl: 'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey: 'sb_publishable_clave_ficticia',
+    fetchImpl
+  });
+  const a = await client.iniciarSesion('manager-a@example.invalid','clave-a');
+  const b = await client.iniciarSesion('manager-b@example.invalid','clave-b');
+  await client.consultar('macroliga_mi_equipo', {}, a);
+  await client.consultar('macroliga_mi_equipo', {}, b);
+  assert.equal(peticiones[2].options.headers.Authorization, 'Bearer jwt-usuario-a');
+  assert.equal(peticiones[3].options.headers.Authorization, 'Bearer jwt-usuario-b');
+  assert.ok(!peticiones[2].options.body.includes('clave-a'));
+  assert.ok(!peticiones[3].options.body.includes('clave-b'));
+});
+
+test('fallo de login y fallo de permiso se informan sin entregar datos', async () => {
+  const client = crearCliente({
+    supabaseUrl: 'https://xuwjbfnhvvbdargcohfe.supabase.co',
+    anonKey: 'sb_publishable_clave_ficticia',
+    fetchImpl: async() => ({ok:false,status:401,json:async() => ({error:'no autorizado'})})
+  });
+  await assert.rejects(client.iniciarSesion('invalido@example.invalid','clave'), /No se pudo completar el acceso/);
+  await assert.rejects(client.consultar('macroliga_plantilla_equipo',{p_equipo_id:'ajeno'},'jwt'), /No se pudo completar el acceso/);
 });
