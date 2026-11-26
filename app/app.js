@@ -1,4 +1,5 @@
-import { crearCliente } from './api.mjs?v=10';
+import { crearCliente } from './api.mjs?v=11';
+import { crearPanelAdmin } from './admin.mjs?v=11';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
@@ -31,6 +32,8 @@ const SECCIONES = Object.freeze({
   admin: ['⚙', 'Administración', 'El panel de administración todavía está en desarrollo y tendrá acceso restringido.']
 });
 let cliente = null;
+let divisionActual = null;
+let identidadActual = null;
 let token = null;
 let intento = 0;
 let venceEn = 0;
@@ -43,6 +46,8 @@ const retryButton = el('retry-session');
 const note = el('prototype-note');
 const NOTA_NORMAL = note.textContent;
 const storage = (() => { try { return window.localStorage; } catch { return null; } })();
+
+const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 
 function aviso(texto) {
   loginMessage.textContent = texto;
@@ -65,9 +70,15 @@ function cambiarVista(nombre) {
     if (activo) boton.setAttribute('aria-current', 'page');
     else boton.removeAttribute('aria-current');
   }
+  if (panelAdmin) {
+    const placeholder = el('section-placeholder');
+    placeholder.hidden = nombre === 'admin';
+    if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
+  }
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
+  divisionActual = null; identidadActual = null; panelAdmin?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-players','team-capacity']) {
     el(id).textContent = '—';
@@ -127,6 +138,7 @@ function venceSesion(sesion) {
 }
 
 function pintarEquipo(equipo, jugadores) {
+  divisionActual = equipo.division_id; identidadActual = equipo.equipo_id;
   el('team-short-name').textContent = equipo.nombre_equipo;
   el('team-title').textContent = equipo.nombre_equipo;
   el('team-division').textContent = equipo.nombre_division;

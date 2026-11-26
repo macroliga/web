@@ -80,3 +80,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @media(max-width:350px){.shell{padding-left:9px;padding-right:9px}.logo{width:34px;height:34px}.brand h1{font-size:17px}.brand p{font-size:8px}.tile{min-height:108px;padding:10px}.tile-label{font-size:12px}.team-shortcut-copy strong{font-size:14px}.top-balance strong{font-size:14px}}
 @media(max-height:680px){.topbar{min-height:68px;padding-top:7px;padding-bottom:8px}.tile{min-height:107px}.tile-icon{font-size:22px;margin-bottom:3px}.features{gap:8px;margin:9px 0}.team-shortcut{min-height:62px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Panel de arranque, también en pantallas pequeñas. */
+.admin-panel{display:grid;gap:1rem;text-align:left}
+.admin-panel[hidden],.admin-panel form[hidden],.admin-panel #admin-preview[hidden]{display:none}
+.admin-panel form,.admin-panel #admin-preview{display:grid;gap:.65rem}
+.admin-panel input:not([type=checkbox]){width:100%;min-width:0;padding:.65rem;border:1px solid #aeb9c6;border-radius:.5rem;font:inherit}
+.admin-positions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
+.admin-panel button{padding:.8rem;border-radius:.6rem;background:#155aa9;color:white;font:inherit;font-weight:700;border:0}
+.admin-panel button:disabled{opacity:.55}
+.admin-panel ul{padding-left:1.2rem;margin:0}
+.admin-panel li{padding:.35rem 0;overflow-wrap:anywhere}
