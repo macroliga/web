@@ -1,5 +1,5 @@
 // Solo recursos publicos. NUNCA guarda datos de sesion, RPC ni credenciales.
-const CACHE = 'macroliga-pwa-estatica-v3';
+const CACHE = 'macroliga-pwa-estatica-v4';
 const STATIC = ['./index.html','./styles.css','./app.js','./api.mjs','./logic.mjs','./entrenadores.mjs','./icon.svg'];
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC)));
