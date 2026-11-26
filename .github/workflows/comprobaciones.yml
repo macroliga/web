@@ -1,0 +1,26 @@
+name: MACROLIGA - comprobaciones de codigo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leer repositorio MACROLIGA
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias del motor
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Comprobar sintaxis
+        run: npm run check
+      - name: Ejecutar pruebas locales
+        run: npm test
