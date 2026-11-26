@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=9">
+  <link rel="stylesheet" href="./styles.css?v=10">
 </head>
 <body>
   <div class="shell">
@@ -129,14 +129,38 @@
             <span class="status-text">Todavía no hay operaciones disponibles</span>
           </div>
           <div id="market-catalog" class="detail-card catalog-panel" hidden>
-            <h2>Todos los jugadores</h2>
-            <p>Consulta de tu división. Computer, Equipo Malo y plantillas de los equipos.</p>
-            <label for="catalog-search">Buscar jugador, club o propietario</label>
-            <input id="catalog-search" type="search" placeholder="Nombre, club o equipo">
-            <label for="catalog-owner">Propietario</label>
-            <select id="catalog-owner"><option value="all">Todos</option><option value="computer">Computer</option><option value="team">Equipos de usuarios</option><option value="bad_team">Equipo Malo</option></select>
-            <p id="catalog-status" role="status"></p>
-            <ul id="catalog-list" aria-label="Jugadores" aria-live="polite"></ul>
+            <div class="market-tabs" aria-label="Consultas de mercado">
+              <button type="button" id="market-players-tab" aria-pressed="true">Jugadores</button>
+              <button type="button" id="market-history-tab" aria-pressed="false">Historial</button>
+            </div>
+            <div id="market-players-view" class="catalog-content">
+              <h2>Todos los jugadores</h2>
+              <p>Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.</p>
+              <label for="catalog-search">Buscar jugador, club o manager</label>
+              <input id="catalog-search" type="search" placeholder="Nombre, club o equipo">
+              <label for="catalog-sort">Ordenar por</label>
+              <select id="catalog-sort"><option value="name">Nombre A–Z</option><option value="points-desc">Más puntos</option><option value="points-asc">Menos puntos</option><option value="value-desc">Mayor valor</option><option value="value-asc">Menor valor</option></select>
+              <details class="market-filter"><summary>Filtros de jugadores</summary>
+                <div class="catalog-controls">
+                  <label>Club <select id="catalog-club"><option value="">Todos los clubes</option></select></label>
+                  <label>Manager / propietario <select id="catalog-owner"><option value="all">Todos</option><option value="computer">Computer</option><option value="team">Todos los managers</option><option value="bad_team">Equipo Malo</option></select></label>
+                  <label>Posición <select id="catalog-position"><option value="">Todas</option><option value="GK">Portero</option><option value="DEF">Defensa</option><option value="MID">Centrocampista</option><option value="FWD">Delantero</option></select></label>
+                  <div class="market-range"><label>Puntos mín. <input id="catalog-min-points" type="number" step="1"></label><label>Puntos máx. <input id="catalog-max-points" type="number" step="1"></label></div>
+                  <div class="market-range"><label>Valor mín. (€) <input id="catalog-min-value" type="number" min="0" step="0.01"></label><label>Valor máx. (€) <input id="catalog-max-value" type="number" min="0" step="0.01"></label></div>
+                  <button type="button" id="catalog-reset">Quitar filtros</button>
+                </div>
+              </details>
+              <p id="catalog-status" role="status"></p>
+              <ul id="catalog-list" aria-label="Jugadores"></ul>
+              <div class="market-pagination"><button type="button" id="catalog-prev" disabled>Anterior</button><button type="button" id="catalog-next" disabled>Siguiente</button></div>
+            </div>
+            <div id="market-history-view" class="catalog-content" hidden>
+              <h2>Historial de traspasos</h2>
+              <p>Todos los traspasos confirmados de tu división, de más reciente a más antiguo.</p>
+              <p id="history-status" role="status"></p>
+              <ul id="history-list" aria-label="Traspasos de la liga"></ul>
+              <button type="button" id="history-more" hidden>Cargar más traspasos</button>
+            </div>
           </div>
           <div id="admin-panel" class="detail-card admin-panel" hidden>
             <h2>Arranque de la división</h2>
@@ -189,6 +213,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=12"></script>
+  <script type="module" src="./app.js?v=13"></script>
 </body>
 </html>

@@ -66,13 +66,24 @@ class Auth:
         if self.rpc_error:
             return respond({'code':'P0001'}, 400)
         if path.endswith('macroliga_mi_equipo'):
-            return respond([{'equipo_id':'ficticio','nombre_equipo':'Equipo ficticio',
+            return respond([{'equipo_id':'ficticio','division_id':'division-prueba','nombre_equipo':'Equipo ficticio',
                 'nombre_division':'Division ficticia','saldo_centimos':500000,'valor_plantilla_centimos':1000000,
                 'jugadores':1,'margen_pujas_centimos':500000}])
         if path.endswith('macroliga_plantilla_equipo'):
             assert body == {'p_equipo_id':'ficticio'}
             return respond([{'nombre_jugador':'Futbolista ficticio','posicion':'DEL','club':'Prueba',
                              'valor_mercado_centimos':1000000}])
+        if path.endswith('macroliga_catalogo_division'):
+            assert body == {'p_division_id':'division-prueba','p_despues':None,'p_limite':250}
+            return respond([
+                {'jugador_id':'01','nombre_jugador':'Álvaro ficticio','club':'Club A','propietario_equipo':'Computer','propietario_tipo':'computer','activo':True,'posicion':'GK','valor_mercado_centimos':'10000','puntos_acumulados':0},
+                {'jugador_id':'02','nombre_jugador':'Baja ficticia','club':'Club B','propietario_equipo':'Equipo A','propietario_manager':'Manager ficticio','propietario_equipo_id':'t1','propietario_tipo':'team','activo':False,'posicion':'DEF','valor_mercado_centimos':'810050','puntos_acumulados':50}
+            ])
+        if path.endswith('macroliga_historial_traspasos'):
+            assert body == {'p_division_id':'division-prueba','p_antes_fecha':None,'p_antes_id':None,'p_limite':50}
+            return respond([{'traspaso_id':'h1','fecha':'2026-11-26T10:00:00+00:00','nombre_jugador':'Jugador ficticio vendido','importe_centimos':'800000','origen':'Equipo A','destino':'Computer','tipo':'computer_sale'}])
+        if path.endswith('macroliga_admin_arranque_estado'):
+            return respond({'code':'42501'},403)
         raise AssertionError('Operacion no permitida')
 
 def run(source):
@@ -122,16 +133,36 @@ def run(source):
                 page.goto(url)
                 login(page)
                 assert_saved(page)
+                page.locator('[data-view="market"]').first.click()
+                expect(page.locator('#catalog-status')).to_contain_text('2 de 2 jugadores')
+                page.fill('#catalog-search','alvaro')
+                expect(page.locator('#catalog-list')).to_contain_text('Álvaro ficticio')
+                expect(page.locator('#catalog-status')).to_contain_text('1 de 2')
+                page.fill('#catalog-search','')
+                page.locator('.market-filter summary').click()
+                page.select_option('#catalog-owner','team:t1')
+                page.fill('#catalog-min-points','50')
+                expect(page.locator('#catalog-list')).to_contain_text('valor congelado')
+                expect(page.locator('#catalog-status')).to_contain_text('1 de 2')
+                page.click('#market-history-tab')
+                expect(page.locator('#history-list')).to_contain_text('Equipo A → Computer')
+                expect(page.locator('#history-more')).to_be_hidden()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.locator('.bottom-nav [data-view="home"]').click()
+                expect(page.locator('#history-list li')).to_have_count(0)
+                private(page)
+                print('PASS mercado móvil: búsqueda, filtros, baja congelada, historial y salida sin PIN',flush=True)
                 for view in ('team','market','rules','home','lineup','cup','standings','admin','home'):
-                    page.locator(f'[data-view="{view}"]').first.click()
+                    page.locator('.bottom-nav [data-view="home"]').click()
+                    page.locator(f'[data-view="{view}"]:visible').first.click()
                     private(page)
                 assert auth.password_calls == 1 and auth.refresh_calls == 0
                 # El service worker de esta entrega debe estar activo y usar recursos exactos.
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v10'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v10").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v13'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v13").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)

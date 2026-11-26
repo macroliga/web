@@ -1,5 +1,5 @@
-import { crearCliente } from './api.mjs?v=12';
-import { crearPanelCatalogo } from './catalogo.mjs?v=12';
+import { crearCliente } from './api.mjs?v=13';
+import { crearPanelCatalogo } from './catalogo.mjs?v=13';
 import { crearPanelAdmin } from './admin.mjs?v=11';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
@@ -75,6 +75,7 @@ function cambiarVista(nombre) {
   if (panelAdmin) {
     const placeholder = el('section-placeholder');
     placeholder.hidden = nombre === 'admin';
+    placeholder.classList.toggle('market-summary', nombre === 'market');
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
   if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();

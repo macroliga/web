@@ -21,9 +21,13 @@ Fecha: 26/11/2026. Exclusivamente macroliga/web y macroliga-piloto
 - No se considera baja una descarga parcial: rechazar si faltan clubes,
   fichas o valores, o más de 30 bajas o más del 10% de activos de golpe.
 - Mercado > Todos los jugadores: lectura autenticada de la propia división,
-  con filtro por propietario, nombre, club o posición. Un inactivo en manos
-  de manager se identifica; no se muestran bajas libres/del Equipo Malo.
-  No muestra pujas ajenas, PIN, saldo ni datos de otros usuarios.
+  con búsqueda sin tildes, club, manager/propietario exacto, posición, rangos
+  de puntos acumulados y valor en euros, orden por nombre/puntos/valor.
+  Los puntos no registrados se distinguen de cero. Un inactivo en manos de
+  manager se identifica; no se muestran bajas libres/del Equipo Malo.
+  Historial: fecha, jugador, origen, destino, importe y tipo de cada operación
+  confirmada de la propia división. No muestra ofertas pendientes, pujas
+  ajenas, PIN, saldo, credenciales ni datos de otras divisiones.
 - Sin cambios de autenticación/sesión, no activar mercado real.
 
 ## Desplegado y verificado
@@ -55,8 +59,12 @@ hay datos para no destruir historial.
 - Panel de administración usa ahora el mismo núcleo privado (no una segunda
   lógica de carga), huella del último lote para invalidar simulaciones.
 - Vista de mercado/consulta en la PWA de desarrollo; no fusionada en main.
-  El listado es de una consulta, advierte si alcanza el límite API de 1000;
-  antes de soportar otra liga/temporada o >1000 filas añadir paginación.
+  El catálogo usa cursor por UUID (250 por consulta), filtros sobre todos los
+  resultados y páginas visibles de 40; máximo de seguridad de 20.250 filas,
+  sin presentar datos parciales si se excede. Historial por fecha y UUID,
+  50 por consulta, carga a petición. Durante descargas concurrentes podría
+  haber una fotografía ligeramente desfasada; reabrir Mercado vuelve a
+  consultar. No se persisten lecturas ni se modifica la sesión.
 - Preparador local del lote de importación: npm run catalogo:preparar-lote --
   .macroliga-local/<directorio>/<día>. Verifica huella, fecha, proveedor,
   cobertura e IDs exactos de puntos; fichero privado, sin conexión a BD.
@@ -104,3 +112,20 @@ rechaza ofertas antiguas, conserva la idempotencia y no cambia las ventas
 normales. Pruebas adicionales pasadas: venta exacta una sola vez, precio cero,
 oferta normal para activo y permisos privados, en PG17.5 desechable.
 Ningún cambio adicional en Supabase ni activación de mercado.
+
+## Buscador e historial ampliados (26/11/2026)
+Se han actualizado las propuestas de lectura y reversión, con índices para
+últimos puntos por jugador y traspasos confirmados. Verificación alojada de
+solo lectura: 16 equipos, cero futbolistas, traspasos o ciclos, catálogo
+privado de puntos existente; RPC de catálogo aún no instalado.
+Pruebas: 151/151 JavaScript, verificación sintáctica correcta. PostgreSQL
+17.5 local: catálogo paginado sin repeticiones, puntos congelados, filtros
+por división, historial con desempate por UUID, exclusión de pendientes,
+revertidos y otras divisiones, rollback y ausencia de permisos para roles
+no autorizados. Prueba JavaScript adicional con 1.201 filas. Cambios de PWA
+solo en rama de desarrollo. No se ha activado ni ampliado el mercado real.
+- Chromium móvil emulado Pixel 7, dependencia temporal local (sin servicio de
+  pago): ocho etapas E2E superadas con API/Auth ficticias interceptadas.
+  Búsqueda, filtros, historial, baja congelada y ausencia de desbordamiento
+  horizontal; navegación, caché sin credenciales, reapertura sin PIN,
+  recuperación de fallos/transitorios, dos pestañas y revocación.

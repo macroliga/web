@@ -142,9 +142,23 @@ try {
   const accumulated=(await query("select count(*)::int n from app_private.catalogo_comuniazo_puntos where player_id=$1",[owned.id]))[0];
   assert.equal(accumulated.n,1);
   console.log('PASS ficha, valor e histórico de puntos congelados durante dos descargas consecutivas');
-  const list=async(d)=>(await query('select * from public.macroliga_catalogo_division($1)',[d]));
+  const list=async(d)=>{
+    let result=[],after=null;
+    for(let i=0;i<10;i++){
+      const page=await query('select * from public.macroliga_catalogo_division($1,$2,250)',[d,after]);
+      result.push(...page);if(page.length<250)return result;after=page.at(-1).jugador_id;
+    }
+    throw Error('Paginación no termina');
+  };
   await login(a.user);let rows=await list(division);
   assert.equal(rows.find(x=>x.jugador_id===newPlayer.id).propietario_tipo,'computer');
+  assert.equal(rows.length,499);assert.equal(new Set(rows.map(x=>x.jugador_id)).size,rows.length);
+  const frozenRead=rows.find(x=>x.jugador_id===owned.id);
+  assert.equal(frozenRead.valor_mercado_centimos,owned.val);
+  assert.equal(frozenRead.propietario_manager,'Equipo A');
+  assert.equal(frozenRead.puntos_acumulados,points(s1).find(p=>p.externalId===oldA.externalId).points);
+  assert.equal(frozenRead.propietario_equipo_id,a.team);
+  await assert.rejects(query('select * from public.macroliga_catalogo_division($1,null,251)',[division]),/Límite/);
   assert.equal(rows.find(x=>x.jugador_id===owned.id).activo,false);
   assert.equal(rows.find(x=>x.jugador_id===owned.id).propietario_equipo,'Equipo A');
   assert(!rows.some(x=>x.jugador_id===free.id||x.jugador_id===bad.id));
@@ -185,6 +199,22 @@ try {
   await query("select app_private.vender_computer($1,'venta-activa-fixture')",[activeOffer]);
   assert.equal((await query("select balance_cents::text balance from public.teams where id=$1",[b.team]))[0].balance,'1000000');
   console.log('PASS oferta obsoleta rechazada, pago exacto, baja de valor cero y oferta normal de activo intacta');
+  // Historial: solo traspasos confirmados, no ofertas ni otras divisiones.
+  await query("insert into public.transfer_operations(division_id,player_id,seller_team_id,seller_kind,buyer_kind,amount_cents,kind,status,idempotency_key) values($1,$2,$3,'team','computer',456,'computer_sale','pending','pendiente-fixture'),($1,$2,$3,'team','computer',456,'computer_sale','reversed','revertido-fixture'),($4,$2,$5,'team','computer',999,'computer_sale','committed','otra-division-fixture')",[division,owned.id,a.team,other,c.team]);
+  // Mismo instante en todas las ventas para probar el desempate por UUID.
+  await query("update public.transfer_operations set effective_at='2026-01-01T00:00:00Z' where division_id=$1 and status='committed'",[division]);
+  const hist=async(d,before=null,id=null,n=2)=>query('select * from public.macroliga_historial_traspasos($1,$2,$3,$4)',[d,before,id,n]);
+  await login(a.user);const h1=await hist(division);assert.equal(h1.length,2);
+  const h2=await hist(division,h1.at(-1).fecha,h1.at(-1).traspaso_id);
+  const both=[...h1,...h2];assert.equal(both.length,3);
+  assert.equal(new Set(both.map(x=>x.traspaso_id)).size,3);
+  assert.deepEqual(new Set(both.map(x=>x.importe_centimos)),new Set([owned.val,'0','1000000']));
+  assert(both.every(x=>x.destino==='Computer'));
+  assert(both.every(x=>!Object.hasOwn(x,'idempotency_key')&&!Object.hasOwn(x,'seller_team_id')));
+  await assert.rejects(hist(other),/No autorizado/);
+  await assert.rejects(hist(division,null,h1[0].traspaso_id),/Paginación/);
+  await reset();await login(c.user);assert.equal((await hist(other)).length,1);await reset();
+  console.log('PASS historial paginado, traspasos confirmados únicamente y aislamiento de división');
   const s3=snap([...second,oldA,oldBad],1);const third=await load(s3);
   assert.equal(third.reactivated,2);assert.equal((await lookup(oldA.externalId)).id,owned.id);
   await login(a.user);const reactivated=await list(division);
@@ -193,8 +223,8 @@ try {
   assert.equal((await lookup(oldBad.externalId)).id,bad.id);
   await login(c.user);assert.equal((await list(other)).find(x=>x.jugador_id===owned.id).propietario_tipo,'team');await reset();
   for(const role of ['anon','authenticated','service_role','macroliga_runner']){
-    const grants=(await query("select has_function_privilege($1,'app_private.importar_catalogo_comuniazo(uuid,jsonb,jsonb,uuid)','EXECUTE') imp,has_function_privilege($1,'public.macroliga_catalogo_division(uuid)','EXECUTE') read,has_table_privilege($1,'app_private.catalogo_comuniazo_puntos','SELECT') points,has_function_privilege($1,'app_private.preparar_oferta_baja_computer(uuid)','EXECUTE') quote",[role]))[0];
-    assert.deepEqual(grants,{imp:false,read:role==='authenticated',points:false,quote:false});
+    const grants=(await query("select has_function_privilege($1,'app_private.importar_catalogo_comuniazo(uuid,jsonb,jsonb,uuid)','EXECUTE') imp,has_function_privilege($1,'public.macroliga_catalogo_division(uuid,uuid,int)','EXECUTE') read,has_function_privilege($1,'public.macroliga_historial_traspasos(uuid,timestamptz,uuid,int)','EXECUTE') history,has_table_privilege($1,'app_private.catalogo_comuniazo_puntos','SELECT') points,has_function_privilege($1,'app_private.preparar_oferta_baja_computer(uuid)','EXECUTE') quote",[role]))[0];
+    assert.deepEqual(grants,{imp:false,read:role==='authenticated',history:role==='authenticated',points:false,quote:false});
   }
   await assert.rejects(db.exec(await sql(rollback)),/plan de datos/);await db.exec('rollback');
   assert.equal((await query('select count(*)::int n from public.player_fixture_points'))[0].n,0);
