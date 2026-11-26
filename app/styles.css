@@ -127,3 +127,30 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 .release-info{display:flex;justify-content:center;align-items:center;gap:10px;font-size:11px;color:#c0d4df;margin:8px 0 14px}
 .release-info button{border:1px solid #b4c9d380;border-radius:7px;background:transparent;color:inherit;padding:5px 8px;font:inherit}
+
+/* MACROLIGA · Mi equipo, referencia funcional de la plantilla por posiciones. */
+.team-summary{margin-top:14px;padding:13px 12px;border:1px solid #dce8ec;background:#f4f9fa;border-radius:13px}
+.team-section-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.team-section-heading h3{margin:0;font-size:16px;color:#183b46}
+.team-text-link{border:0;background:none;color:#0a727d;font-weight:750;font-size:12px;text-align:right;padding:6px 0}
+.team-summary p{font-size:12px;line-height:1.5;color:#607783;margin:0}
+.roster-total{font-size:12px;font-weight:750;color:#627b89;white-space:nowrap}
+.team-sale-notice{font-size:11px;color:#607783;margin:0 0 14px;line-height:1.45}
+.roster-groups{display:grid;gap:13px}
+.roster-position{overflow:hidden;border:1px solid #dae6e9;border-radius:13px;background:#fff}
+.roster-position-head{background:#e9f4f1;padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #d2e4de}
+.roster-position-head h4{font-size:15px;color:#186557;margin:0}
+.roster-position-head span{font-size:10px;color:#6d8187;font-weight:800;white-space:nowrap}
+.roster-position-empty,.roster-empty{color:#6b8089;font-size:12px;padding:14px;margin:0}
+.roster-player{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center;padding:12px 11px;border-bottom:1px solid #e4ecef;min-height:95px}
+.roster-player:last-child{border-bottom:0}
+.roster-player-info{display:grid;gap:3px;min-width:0}
+.roster-player-name{font-weight:800;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.roster-player-club{color:#677b85;font-size:12px}
+.roster-player-extra{color:#71828a;font-size:11px;overflow-wrap:anywhere}
+.roster-player-actions{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:106px}
+.roster-value-label{color:#7a898c;font-size:9px;font-weight:800;letter-spacing:.05em}
+.roster-player-value{color:#166456;font-size:14px;font-weight:850;white-space:nowrap;font-variant-numeric:tabular-nums}
+.roster-sale-button{border:1px solid #a78952;border-radius:10px;background:#a17a36;color:#fff;padding:8px 10px;font-size:11px;font-weight:800;min-height:37px}
+.roster-sale-button:disabled{opacity:.52;cursor:not-allowed}
+@media(max-width:360px){.roster-player{padding:10px 8px;gap:5px}.roster-player-name{font-size:14px}.roster-player-actions{min-width:94px}.roster-player-value{font-size:12px}.roster-sale-button{padding:7px 6px}}
