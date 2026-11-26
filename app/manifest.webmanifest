@@ -1,0 +1,19 @@
+{
+  "name": "MACROLIGA · Liga piloto",
+  "short_name": "MACROLIGA",
+  "description": "Liga piloto independiente de futbol fantasy",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#061d2b",
+  "theme_color": "#082637",
+  "lang": "es-ES",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
