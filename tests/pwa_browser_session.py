@@ -169,8 +169,8 @@ def run(source):
             def do_GET(self):
                 # HTML obsoleto en primera navegación, módulo actual; el
                 # parámetro de versión devuelve el HTML vigente.
-                if self.path.startswith('/app/?stale=1') and 'release=23' not in self.path:
-                    old=(web/'app/index.html').read_text().replace('data-release="23"','data-release="18"').replace('app.js?v=23','app.js?v=18')
+                if self.path.startswith('/app/?stale=1') and 'release=24' not in self.path:
+                    old=(web/'app/index.html').read_text().replace('data-release="24"','data-release="18"').replace('app.js?v=24','app.js?v=18')
                     old=old.replace('id="lineup-formation"','id="old-lineup-formation"')
                     body=old.encode()
                     self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
@@ -356,8 +356,8 @@ def run(source):
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v23'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v23").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v24'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v24").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)
@@ -383,12 +383,12 @@ def run(source):
                 calls=auth.password_calls
                 page.click('#app-refresh')
                 private(page)
-                assert auth.password_calls==calls and 'release=23' in page.url
+                assert auth.password_calls==calls and 'release=24' in page.url
                 assert_saved(page)
-                print('PASS actualización manual v23 conserva acceso y sesión',flush=True)
+                print('PASS actualización manual v24 conserva acceso y sesión',flush=True)
                 before_refresh=auth.refresh_calls
                 page.goto(url+'?stale=1',wait_until='domcontentloaded')
-                page.wait_for_url('**release=23')
+                page.wait_for_url('**release=24')
                 private(page)
                 assert auth.password_calls==calls and auth.refresh_calls==before_refresh+1
                 assert_saved(page)

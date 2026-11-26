@@ -1,7 +1,7 @@
-import { crearCliente } from './api.mjs?v=23';
+import { crearCliente } from './api.mjs?v=24';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
-import { crearPanelCatalogo } from './catalogo.mjs?v=23';
-import { crearPanelAlineacion } from './alineacion.mjs?v=23';
+import { crearPanelCatalogo } from './catalogo.mjs?v=24';
+import { crearPanelAlineacion } from './alineacion.mjs?v=24';
 import { crearPanelAdmin } from './admin.mjs?v=17';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
@@ -31,7 +31,7 @@ const SECCIONES = Object.freeze({
   lineup: ['👕', 'Alineación', 'Prepara tu once y consulta los partidos.'],
   sales: ['⚽', 'Mercado', 'Gestiona tus ventas y ofertas.'],
   market: ['⚽', 'Mercado', 'Las pujas y los fichajes aparecerán aquí cuando activemos el mercado del piloto.'],
-  bad: ['👹', 'Equipo Malo', 'Las compras y las cláusulas especiales del Equipo Malo todavía no están activadas.'],
+  bad: ['👹', 'Equipo Malo', 'Consulta su plantilla y las compras confirmadas.'],
   rules: ['📖', 'Normas', 'Las normas de MACROLIGA se publicarán aquí antes del inicio de la competición.'],
   cup: ['🏆', 'Copa', 'La Copa está reservada para una fase posterior. Aún no se ha definido su formato.'],
   standings: ['📊', 'Clasificación', 'La clasificación aparecerá cuando tengamos jornadas y puntuaciones.'],
@@ -85,11 +85,11 @@ function cambiarVista(nombre, jugadorVenta=null) {
   }
   if (panelAdmin) {
     const placeholder = el('section-placeholder');
-    placeholder.hidden = ['admin','market','sales','lineup'].includes(nombre) || (nombre === 'standings' && Boolean(panelClasificacion));
+    placeholder.hidden = ['admin','market','sales','lineup','bad'].includes(nombre) || (nombre === 'standings' && Boolean(panelClasificacion));
     placeholder.classList.toggle('market-summary', nombre === 'market');
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
-  if (nombre === 'market'||nombre==='sales') void panelCatalogo?.show(nombre==='sales'?'sales':'market',jugadorVenta); else panelCatalogo?.clear();
+  if (['market','sales','bad'].includes(nombre)) void panelCatalogo?.show(nombre,jugadorVenta); else panelCatalogo?.clear();
   if (nombre==='lineup') void panelAlineacion?.show(); else panelAlineacion?.clear();
   if (nombre === 'standings') void panelClasificacion?.show(); else panelClasificacion?.clear();
   if (nombre==='team'||nombre==='home') void actualizarEquipo();
@@ -495,14 +495,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='23')return false;
-  url.searchParams.set('release','23');
+  if(!manual&&url.searchParams.get('release')==='24')return false;
+  url.searchParams.set('release','24');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='23'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='24'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.

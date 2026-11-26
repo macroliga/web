@@ -93,6 +93,10 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     club.value='';owner.value='all';
   }
   function render(){
+    const isBad=owner.value==='bad_team';
+    const heading=el('catalog-heading'), description=el('catalog-description');
+    if(heading)heading.textContent=isBad?'Equipo Malo':'Todos los jugadores';
+    if(description)description.textContent=isBad?'Jugadores adquiridos por el Equipo Malo. Consulta Historial para ver las compras confirmadas.':'Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.';
     list.replaceChildren();prev.disabled=true;next.disabled=true;
     if(!loaded)return;
     let filtered;
@@ -100,7 +104,7 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     catch(e){status.textContent=e.message;return;}
     page=Math.min(page,Math.max(0,Math.ceil(filtered.length/PAGE)-1));
     const start=page*PAGE,end=Math.min(start+PAGE,filtered.length);
-    status.textContent=filtered.length+' de '+rows.length+' jugadores'+(filtered.length?' · '+(start+1)+'–'+end:rows.length?' · Sin coincidencias':' · Catálogo aún sin cargar');
+    status.textContent=isBad&&!rows.some(r=>r.propietario_tipo==='bad_team')?'El Equipo Malo aún no tiene jugadores. Las compras nocturnas confirmadas aparecerán aquí.':filtered.length+' de '+rows.length+' jugadores'+(filtered.length?' · '+(start+1)+'–'+end:rows.length?' · Sin coincidencias':' · Catálogo aún sin cargar');
     for(const r of filtered.slice(start,end)){
       const li=doc.createElement('li'),name=doc.createElement('strong'),info=doc.createElement('span'),ownership=doc.createElement('span');
       name.textContent=r.nombre_jugador;
@@ -247,17 +251,17 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     generation++;jugadorVenta=null;operations=null;marketRows=[];busy=false;if(actionStatus)actionStatus.textContent='';if(salesStatus)salesStatus.textContent='';salesControls?.replaceChildren();salesList?.replaceChildren();offersList?.replaceChildren();rows=[];loaded=false;page=0;history=[];historyLoaded=false;historyBusy=false;historyDone=false;ctx=null;
     list.replaceChildren();histList.replaceChildren();marketList.replaceChildren();marketStatus.textContent='';status.textContent='';histStatus.textContent='';histMore.hidden=true;prev.disabled=true;next.disabled=true;
     for(const input of [search,position,minPoints,maxPoints,minValue,maxValue])input.value='';
-    selectors();sort.value='name';tab('market');root.hidden=true;
+    selectors();sort.value='name';render();tab('market');root.hidden=true;
   }
   async function show(initialTab='market',jugador=null){
-    clear();jugadorVenta=jugador;root.hidden=false;tab(initialTab);const c={...contexto()},g=generation;ctx=c;
+    clear();jugadorVenta=jugador;root.hidden=false;const isBad=initialTab==='bad';if(isBad){owner.value='bad_team';render();}tab(isBad?'players':initialTab);const c={...contexto()},g=generation;ctx=c;
     if(!c.division||!c.token){status.textContent='Catálogo no disponible.';return;}
     status.textContent='Consultando jugadores…';
     void loadMarket(c,g);
     try{
       const result=await cargarCatalogo((name,args)=>call(c,name,args),()=>valid(g,c));
       if(!valid(g,c)||result===null)return;
-      rows=result;loaded=true;selectors();render();
+      rows=result;loaded=true;selectors();if(isBad)owner.value='bad_team';render();
     }catch(err){if(valid(g,c))status.textContent='No se pudo consultar el catálogo completo. No has cerrado sesión.';}
   }
   const changed=()=>{page=0;render();};

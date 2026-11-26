@@ -35,7 +35,7 @@ class Element {
  addEventListener(name,fn){this.events.set(name,fn);} dispatch(name){return this.events.get(name)?.();} setAttribute(){} replaceChildren(...children){this.children=children;} appendChild(x){this.children.push(x);}
 }
 function dom(){
- const keys=['catalog-search','catalog-owner','catalog-club','catalog-position','catalog-min-points','catalog-max-points','catalog-min-value','catalog-max-value','catalog-sort','catalog-list','catalog-status','catalog-prev','catalog-next','catalog-reset','history-list','history-status','history-more','market-players-view','market-history-view','market-players-tab','market-history-tab','market-current-view','market-current-tab','market-current-list','market-current-status'];
+ const keys=['catalog-heading','catalog-description','catalog-search','catalog-owner','catalog-club','catalog-position','catalog-min-points','catalog-max-points','catalog-min-value','catalog-max-value','catalog-sort','catalog-list','catalog-status','catalog-prev','catalog-next','catalog-reset','history-list','history-status','history-more','market-players-view','market-history-view','market-players-tab','market-history-tab','market-current-view','market-current-tab','market-current-list','market-current-status'];
  const e=Object.fromEntries(keys.map(k=>[k,new Element()]));
  const root=new Element();root.ownerDocument={createElement:()=>new Element()};root.querySelector=k=>e[k.slice(1)];
  return {root,e};
@@ -89,4 +89,16 @@ test('mercado inicial muestra 15 variados, sin admitir pujas ni generar movimien
  assert.deepEqual(calls,['macroliga_mercado_visible','macroliga_catalogo_division']);
  e['market-players-tab'].dispatch('click');assert.equal(e['market-current-view'].hidden,true);
  panel.clear();assert.equal(e['market-current-list'].children.length,0);
+});
+
+test('acceso Equipo Malo abre su plantilla real, avisa si aún no hay compras y no conserva el filtro al salir',async()=>{
+ const {root,e}=dom();let catalog=rows;
+ const ctx={token:'ficticio',division:'d1',identity:'t1',client:{consultar:async(n)=>n==='macroliga_catalogo_division'?catalog:[]}};
+ const panel=crearPanelCatalogo(root,()=>ctx);
+ await panel.show('bad');
+ assert.equal(root.hidden,false);assert.equal(e['market-players-view'].hidden,false);assert.equal(e['catalog-owner'].value,'bad_team');assert.equal(e['catalog-heading'].textContent,'Equipo Malo');assert.equal(e['catalog-list'].children.length,1);
+ assert.equal(e['catalog-list'].children[0].children[0].textContent,rows[2].nombre_jugador);
+ catalog=rows.slice(0,2);await panel.show('bad');
+ assert.match(e['catalog-status'].textContent,/aún no tiene jugadores/);assert.equal(e['catalog-list'].children.length,0);
+ await panel.show('market');assert.equal(e['market-current-view'].hidden,false);assert.equal(e['catalog-owner'].value,'all');assert.equal(e['catalog-heading'].textContent,'Todos los jugadores');
 });
