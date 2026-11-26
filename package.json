@@ -6,8 +6,9 @@
   "description": "Motor MACROLIGA en desarrollo, con migraciones y pruebas de PostgreSQL real; no es producción",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/domain/mercado.mjs && node --check src/domain/puntuacion.mjs && node --check src/domain/calendario.mjs && node --check src/domain/importacion.mjs && node --check src/domain/publicacion_mercado.mjs && node --check src/domain/clausulas.mjs && node --check src/server/mercado-ejecutor.mjs && node --check src/server/adaptador-postgres.mjs && node --check scripts/ejecutar-mercado.mjs && node --check app/app.js && node --check app/api.mjs && node --check app/logic.mjs",
-    "market:dry-run": "node scripts/ejecutar-mercado.mjs --dry-run"
+    "check": "node --check src/domain/mercado.mjs && node --check src/domain/puntuacion.mjs && node --check src/domain/calendario.mjs && node --check src/domain/importacion.mjs && node --check src/domain/publicacion_mercado.mjs && node --check src/domain/clausulas.mjs && node --check src/server/mercado-ejecutor.mjs && node --check src/server/adaptador-postgres.mjs && node --check scripts/ejecutar-mercado.mjs && node --check app/app.js && node --check app/api.mjs && node --check app/logic.mjs && node --check scripts/probar_acceso_real.mjs",
+    "market:dry-run": "node scripts/ejecutar-mercado.mjs --dry-run",
+    "test:acceso-real": "node scripts/probar_acceso_real.mjs"
   },
   "engines": {
     "node": ">=20"
