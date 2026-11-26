@@ -60,6 +60,14 @@ class TestComuniazo(unittest.TestCase):
         return soup(self.pages[path])
     def extract(self,previous=None):
         return cz.extract_catalog(self.fetch,permission_ref="Prueba ficticia local; sin autorización real",now=datetime(2026,11,26,8,tzinfo=timezone.utc),previous=previous)
+    def test_diagnostico_solo_contadores(self):
+        report=cz.diagnostico_publico(self.fetch)
+        self.assertEqual(report["active"],500)
+        self.assertEqual(report["excluded"],50)
+        self.assertNotIn("points",report)
+        self.assertNotIn("excludedRows",report)
+        self.assertNotIn("players",report)
+        self.assertEqual(len(self.calls),26)
     def test_completo(self):
         snap,info=self.extract()
         self.assertEqual((info["clubs"],info["downloaded"],info["active"],info["excluded"]),(20,550,500,50))
@@ -89,6 +97,14 @@ class TestComuniazo(unittest.TestCase):
     def test_activo_sin_posicion(self):
         self.pages[cz.list_path("porteros")]=self.pages[cz.list_path("porteros")].replace(f'{cz.LIST}/ficticio-1-1',f'{cz.LIST}/sin-posicion')
         with self.assertRaisesRegex(ValueError,"sin posición"):self.extract()
+    def test_anuncios_tabla_real(self):
+        # Estructura comprobada contra la página pública (sin datos reales).
+        ads='<tr><td colspan="9"><div class="axd-desktop axd-content"></div></td></tr><tr><td colspan="9"></td></tr>'
+        self.pages[cz.list_path()]=self.pages[cz.list_path()].replace('</table>',ads+'</table>')
+        self.assertEqual(self.extract()[1]["downloaded"],550)
+        # Una fila deportiva perdida no se puede disfrazar de espacio de anuncios.
+        self.pages[cz.list_path()]=self.pages[cz.list_path()].replace('</table>','<tr><td colspan="9">Jugador sin ficha</td></tr></table>')
+        with self.assertRaisesRegex(ValueError,"Tabla con filas"): self.extract()
     def test_fila_invalida(self):
         self.pages[cz.list_path()]=self.pages[cz.list_path()].replace(f'<a href="{cz.LIST}/historico-1">Histórico 1</a>',"Histórico 1")
         # La tabla cae por debajo del mínimo o contiene fila sin ficha.

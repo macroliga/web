@@ -124,3 +124,23 @@ No se ha programado cron ni lanzado el mercado real.
 - Sin pruebas contra las 26 páginas reales: comprobadas en lectura las
   referencias públicas de listado/plantilla y aviso legal, no descarga masiva.
 - No se ha tocado ni Laviana ni la base alojada de MACROLIGA.
+
+## Comprobación posterior en vivo (solo lectura)
+
+El acceso a /laliga y a la tabla pública de jugadores devolvió HTTP 200,
+sin cuenta, API privada ni contraseña. La autorización de reutilización
+mencionada arriba no es una condición técnica de acceso.
+La tabla real contiene 627 filas HTML: 623 fichas, 1 cabecera y 3 espacios
+publicitarios (celdas colspan=9 vacías o con contenedor axd-desktop/axd-content).
+Se corrigió el parser para excluir exclusivamente estos espacios y seguir
+rechazando fichas incompletas. Nueva prueba real: 623 fichas validadas con
+identificador, precio y puntos acumulados, sin guardar sus contenidos.
+Se añadió un diagnóstico del lote completo que solo devuelve contadores,
+no produce un archivo ni un snapshot importable. 17 pruebas locales superadas.
+
+Resultado del diagnóstico real completo, 26/11/2026, 16:35 hora peninsular:
+20 clubes, **623 fichas generales, 551 activos y 72 sin club actual**.
+Se comprobaron los cuatro filtros de posición y no faltaron valores/posiciones
+de activos. Sin persistir fichero de futbolistas, sin repartir, sin modificar
+Supabase o Laviana. Es una comprobación técnica puntual, no una activación
+diaria ni una publicación de la base deportiva.

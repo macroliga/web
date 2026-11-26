@@ -60,9 +60,8 @@ def validate_permission(permission):
         raise ValueError("Referencia de autorización escrita obligatoria")
     return ref
 
-def fetcher(permission):
-    """Únicamente páginas públicas permitidas. No usa sesión ni tokens de Laviana."""
-    validate_permission(permission)
+def _public_fetcher():
+    """Transporte de lectura pública. No usa sesión ni tokens de Laviana."""
     allowed = {INDEX, *CLUBS, *(list_path(p) for p in ("todos", *POSITIONS))}
     def fetch(path):
         if path not in allowed:
@@ -79,6 +78,11 @@ def fetcher(permission):
             if len(data)>MAX_BYTES: raise RuntimeError("Respuesta demasiado grande")
         return BeautifulSoup(data, "html.parser")
     return fetch
+
+def fetcher(permission):
+    """Transporte para preparar y persistir un catálogo autorizado."""
+    validate_permission(permission)
+    return _public_fetcher()
 
 def extract_clubs(soup):
     actual = {path_from_link(a.get("href")) for a in soup.select("a[href]")}
@@ -114,6 +118,18 @@ def table_rows(soup, minimum):
     candidates = []
     for table in soup.find_all("table"):
         rows = [tr.find_all("td",recursive=False) for tr in table.find_all("tr")]
+        # El listado público real intercala espacios de anuncios entre
+        # futbolistas: una sola celda colspan=9, vacía o con contenedor
+        # axd-desktop/axd-content. No son fichas ni filas deportivas fallidas.
+        def ads_row(cells):
+            if len(cells)!=1 or cells[0].get("colspan")!="9" or cells[0].find("a",href=True):
+                return False
+            cell=cells[0]
+            children=cell.find_all(recursive=False)
+            return (not children and not cell.get_text(strip=True)) or (
+                len(children)==1 and children[0].name=="div" and
+                {"axd-desktop","axd-content"}.issubset(children[0].get("class",[])))
+        rows = [cells for cells in rows if not ads_row(cells)]
         potential = [cells for cells in rows if cells and any(slug_from_link(a.get("href")) for a in cells[0].find_all("a",href=True))]
         if len(potential)>=minimum:
             # No aceptar una tabla suficientemente grande ocultando filas
@@ -140,7 +156,7 @@ def extract_table(soup, minimum):
         data[key]={"name":name,"marketValueCents":value,"points":int(points)}
     return data
 
-def extract_catalog(fetch, *, permission_ref, now=None, previous=None):
+def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnostic=False):
     """Un único lote diario consolidado: índice, 20 clubes, general, 4 filtros.
     Rechaza el lote entero si falta un club, precio, ficha o posición de un activo.
     """
@@ -194,7 +210,7 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None):
     for key,p in previous_by_id.items():
         if key not in membership:
             active.append({**p,"active":False})
-    snapshot={"schemaVersion":1,"kind":"authorized","provider":"comuniazo","competition":"LALIGA","season":SEASON,"currency":"EUR","asOf":stamp,"permissionRef":permission_ref,"players":sorted(active,key=lambda p:p["externalId"])}
+    snapshot={"schemaVersion":1,"kind":"diagnostic" if diagnostic else "authorized","provider":"comuniazo","competition":"LALIGA","season":SEASON,"currency":"EUR","asOf":stamp,"permissionRef":permission_ref,"players":sorted(active,key=lambda p:p["externalId"])}
     new_by_id={p["externalId"]:p for p in active}
     diff={"previousAsOf":previous.get("asOf") if previous else None,
         "newPlayers":sum(k not in previous_by_id for k in membership),
@@ -205,3 +221,12 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None):
         "positionChanges":sum(k in previous_by_id and previous_by_id[k]["position"]!=new_by_id[k]["position"] for k in membership)}
     info={"asOf":stamp,"clubs":len(names),"downloaded":len(overall),"active":len(membership),"excluded":len(excluded),"historicalRetained":len(active)-len(membership),"changes":diff,"points":[{"externalId":key,"points":overall[key]["points"]} for key in sorted(membership)],"excludedRows":excluded}
     return snapshot,info
+
+
+def diagnostico_publico(fetch=None):
+    """Comprueba el HTML público y la cobertura. Solo devuelve contadores.
+    No exporta fichas, no produce un catálogo importable ni escribe archivos.
+    No equivale a autorización para reutilizar o automatizar la publicación.
+    """
+    _,info=extract_catalog(fetch if fetch is not None else _public_fetcher(),permission_ref="Diagnóstico no persistente; no acredita autorización",diagnostic=True)
+    return {k:v for k,v in info.items() if k not in ("points","excludedRows","changes")}
