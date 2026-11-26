@@ -1,0 +1,2 @@
+# Dependencia exclusiva del importador deportivo. Sin servicios externos de pago.
+beautifulsoup4==4.13.4

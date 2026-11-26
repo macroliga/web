@@ -16,7 +16,8 @@
     "inicio:test-descarga": "node tests/probar_descarga_local.mjs",
     "inicio:test-sql": "node tests/sql/probar_arranque_local.mjs",
     "inicio:test-admin-sql": "node tests/sql/probar_admin_arranque_local.mjs",
-    "catalogo:preparar": "node scripts/preparar-catalogo.mjs"
+    "catalogo:preparar": "node scripts/preparar-catalogo.mjs",
+    "catalogo:test-comuniazo": "python -B tests/comuniazo_test.py"
   },
   "engines": {
     "node": ">=20"
