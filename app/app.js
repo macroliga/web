@@ -130,7 +130,7 @@ salir.addEventListener('click', async () => {
 try {
   cliente = crearCliente(window.MACROLIGA_CONFIG || {});
   buscar('connection-state').textContent = 'API configurada';
-  aviso('Acceso preparado. Falta dar de alta las 16 cuentas en Supabase Auth.');
+  aviso('Elige uno de los 16 entrenadores e introduce su PIN de seis cifras.');
 } catch {
   entrar.disabled = true;
   buscar('connection-state').textContent = 'Pendiente de configurar';
