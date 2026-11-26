@@ -10,8 +10,10 @@ Fecha: 26/11/2026. Exclusivamente macroliga/web y macroliga-piloto
 - Altas activas: Computer por ausencia de titularidad en cada división; no
   implica aparición inmediata en los 15 lotes diarios.
 - Baja confirmada: no se borra la ficha ni su historia; se mantiene valor
-  último. Si pertenece a un manager, permanece en su plantilla y visible
-  hasta que venda a Computer (sin ventas a terceros mientras esté inactivo).
+  último, nombre, club, posición y último registro de puntos. Si pertenece a un
+  manager, permanece en su plantilla y visible hasta que venda a Computer
+  por exactamente ese último valor (sin primas, descuentos ni ventas a
+  terceros mientras esté inactivo).
   Si estaba libre, se oculta; si estaba en Equipo Malo se archiva y libera
   titularidad sin pago ni traspaso. No se toca titularidad de managers de
   ninguna división. Si vuelve, conserva UUID y titulares que aún lo posean;
@@ -44,7 +46,12 @@ hay datos para no destruir historial.
 ## Preparado, NO desplegado
 - RPC de catálogo de división, parche mínimo de contabilización de venta a
   Computer para inactivos y respectivas reversiones; SQL en docs/propuestas.
-  No cambia el importe de la venta ni las reglas de ofertas vigentes.
+  Para inactivos, el precio exacto es el último valor congelado, incluso si
+  vale cero. Las ofertas antiguas a otro precio se rechazan; la función privada
+  preparar_oferta_baja_computer registra una nueva oferta al precio correcto
+  sobre un anuncio vigente del titular. Requiere confirmación de la oferta
+  actualizada; no cambia las ventas de activos ni los permisos de acceso.
+  Esta propuesta económica no está instalada en la instancia alojada.
 - Panel de administración usa ahora el mismo núcleo privado (no una segunda
   lógica de carga), huella del último lote para invalidar simulaciones.
 - Vista de mercado/consulta en la PWA de desarrollo; no fusionada en main.
@@ -85,3 +92,15 @@ hay datos para no destruir historial.
 - El núcleo se probó en las versiones exactas de los ficheros; se verificó
   estructura y ACL de la instancia 17.12. No se hicieron pruebas con los
   usuarios o jugadores reales del piloto.
+
+## Aclaración de la regla de bajas (26/11/2026)
+En el importador ya desplegado se verifica en PostgreSQL local que las filas
+inactivas se ignoran para la actualización de ficha, valor y puntos. Dos
+descargas sucesivas de una baja, incluida una ficha histórica con precio, club,
+nombre y posición distintos, no alteran su última ficha activa ni añaden
+observaciones ficticias. La venta a Computer queda pendiente de implantar con
+el resto de RPC económicos: la propuesta admite solo el precio congelado,
+rechaza ofertas antiguas, conserva la idempotencia y no cambia las ventas
+normales. Pruebas adicionales pasadas: venta exacta una sola vez, precio cero,
+oferta normal para activo y permisos privados, en PG17.5 desechable.
+Ningún cambio adicional en Supabase ni activación de mercado.

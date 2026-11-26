@@ -214,4 +214,45 @@ $$;
 revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text)
   from public,anon,authenticated,service_role;
 revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from macroliga_runner;
+
+create or replace function app_private.vender_computer(
+  p_anuncio_id uuid, p_clave text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_anuncio public.sale_listings%rowtype;
+  v_prev public.transfer_operations%rowtype;
+  v_operacion uuid;
+begin
+  select * into v_anuncio from public.sale_listings where id=p_anuncio_id;
+  if not found then raise exception 'Anuncio no encontrado' using errcode='22023'; end if;
+  select * into v_prev from public.transfer_operations where idempotency_key=p_clave;
+  if found and v_prev.status='committed' and v_prev.kind='computer_sale'
+    and v_prev.player_id=v_anuncio.player_id
+    and v_prev.seller_team_id=v_anuncio.seller_team_id
+    and v_prev.division_id=v_anuncio.division_id then
+    return v_prev.id;
+  end if;
+  if v_anuncio.status<>'open' or v_anuncio.computer_offer_cents is null
+    or v_anuncio.computer_offer_cents <= 0
+    or v_anuncio.computer_offer_at is null
+    or v_anuncio.computer_offer_at>pg_catalog.clock_timestamp()
+    or v_anuncio.expires_at<=pg_catalog.clock_timestamp() then
+    raise exception 'No existe una oferta vigente del Computer' using errcode='22023';
+  end if;
+  v_operacion:=app_private._contabilizar_traspaso(
+    v_anuncio.division_id,v_anuncio.player_id,v_anuncio.seller_team_id,
+    null,'team','computer',v_anuncio.computer_offer_cents,'computer_sale',p_clave
+  );
+  update public.sale_listings set status='accepted'
+   where id=p_anuncio_id and status='open';
+  if not found then raise exception 'Anuncio modificado simultáneamente' using errcode='40001'; end if;
+  return v_operacion;
+end;
+$$;
+drop function app_private.preparar_oferta_baja_computer(uuid);
 commit;

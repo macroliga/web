@@ -1,4 +1,4 @@
--- PROPUESTA NO DESPLEGADA. Solo excepción de salida a Computer de bajas, nunca venta entre managers ni compra.
+-- PROPUESTA NO DESPLEGADA. Bajas: oferta y venta a Computer al último valor verificado, sin otras ventas ni compras.
 begin;
 create or replace function app_private._contabilizar_traspaso(
   p_division_id uuid,
@@ -34,11 +34,13 @@ declare
   v_check_reserved bigint;
   v_check_limit bigint;
   v_op uuid;
+  v_activo boolean;
+  v_ultimo_valor bigint;
 begin
   if p_clave is null or length(btrim(p_clave)) < 8 or length(p_clave)>200 then
     raise exception 'Clave de operación inválida' using errcode='22023';
   end if;
-  if p_importe is null or p_importe <= 0 then
+  if p_importe is null or p_importe < 0 then
     raise exception 'Importe inválido' using errcode='22023';
   end if;
   if p_tipo not in ('market','computer_sale','bad_team_sale','manager_sale') then
@@ -77,7 +79,11 @@ begin
     raise exception 'Clave repetida con contenido distinto' using errcode='23505';
   end if;
 
-  if not exists(select 1 from public.players p where p.id=p_jugador_id and (p.active or p_tipo='computer_sale')) then
+  -- El importador conserva la fotografía del último día activo. La división
+  -- ya está bloqueada y el importador también bloquea todas las divisiones.
+  select p.active,p.current_market_value_cents into v_activo,v_ultimo_valor
+    from public.players p where p.id=p_jugador_id;
+  if not found or (not v_activo and p_tipo<>'computer_sale') then
     raise exception 'Futbolista inexistente o inactivo' using errcode='22023';
   end if;
 
@@ -101,6 +107,18 @@ begin
     if not found or v_estado<>'active' then
       raise exception 'Vendedor inválido o inactivo' using errcode='22023';
     end if;
+  end if;
+
+  -- Solo una baja vendida por su titular a Computer admite valor cero, y
+  -- únicamente el último valor exacto. Todos los demás traspasos mantienen
+  -- las condiciones anteriores. Ni primas ni descuentos sobre las bajas.
+  if not v_activo and p_tipo='computer_sale' then
+    if p_importe is distinct from v_ultimo_valor then
+      raise exception 'La oferta de la baja debe coincidir con el último valor verificado'
+        using errcode='22023';
+    end if;
+  elsif p_importe<=0 then
+    raise exception 'Importe inválido' using errcode='22023';
   end if;
 
   if p_destino='team' then
@@ -215,4 +233,93 @@ revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,te
   from public,anon,authenticated,service_role;
 -- El runner no puede invocar directamente el núcleo contable.
 revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from macroliga_runner;
+
+-- Conserva los permisos de la función existente.
+create or replace function app_private.vender_computer(
+  p_anuncio_id uuid, p_clave text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_anuncio public.sale_listings%rowtype;
+  v_prev public.transfer_operations%rowtype;
+  v_operacion uuid;
+  v_division uuid;
+  v_activo boolean;
+  v_valor bigint;
+begin
+  select division_id into v_division from public.sale_listings where id=p_anuncio_id;
+  if not found then raise exception 'Anuncio no encontrado' using errcode='22023'; end if;
+  perform 1 from public.divisions d where d.id=v_division for update;
+  select * into v_anuncio from public.sale_listings where id=p_anuncio_id and division_id=v_division for update;
+  if not found then raise exception 'Anuncio no encontrado' using errcode='22023'; end if;
+  select * into v_prev from public.transfer_operations where idempotency_key=p_clave;
+  if found and v_prev.status='committed' and v_prev.kind='computer_sale'
+    and v_prev.player_id=v_anuncio.player_id
+    and v_prev.seller_team_id=v_anuncio.seller_team_id
+    and v_prev.division_id=v_anuncio.division_id then
+    return v_prev.id;
+  end if;
+  select p.active,p.current_market_value_cents into v_activo,v_valor
+    from public.players p where p.id=v_anuncio.player_id;
+  if not found then raise exception 'Futbolista inexistente' using errcode='22023'; end if;
+  if v_anuncio.status<>'open' or v_anuncio.computer_offer_cents is null
+    or (v_activo and v_anuncio.computer_offer_cents <= 0)
+    or v_anuncio.computer_offer_at is null
+    or v_anuncio.computer_offer_at>pg_catalog.clock_timestamp()
+    or v_anuncio.expires_at<=pg_catalog.clock_timestamp() then
+    raise exception 'No existe una oferta vigente del Computer' using errcode='22023';
+  end if;
+  -- No aceptar una oferta antigua a otro precio ni modificarla a escondidas.
+  -- El operador debe preparar la oferta fija y el usuario confirmarla.
+  if not v_activo and v_anuncio.computer_offer_cents is distinct from v_valor then
+    raise exception 'Oferta antigua de Computer: actualizar al último valor verificado antes de confirmar'
+      using errcode='22023';
+  end if;
+  v_operacion:=app_private._contabilizar_traspaso(
+    v_anuncio.division_id,v_anuncio.player_id,v_anuncio.seller_team_id,
+    null,'team','computer',v_anuncio.computer_offer_cents,'computer_sale',p_clave
+  );
+  update public.sale_listings set status='accepted'
+   where id=p_anuncio_id and status='open';
+  if not found then raise exception 'Anuncio modificado simultáneamente' using errcode='40001'; end if;
+  return v_operacion;
+end;
+$$;
+
+-- El operador privado prepara la oferta visible a precio fijo, sobre un
+-- anuncio vigente del titular. No vende, no paga, no amplía permisos.
+create function app_private.preparar_oferta_baja_computer(p_anuncio_id uuid)
+returns bigint
+language plpgsql security invoker set search_path=''
+as $$
+declare
+  v_division uuid;
+  v_anuncio public.sale_listings%rowtype;
+  v_valor bigint;
+begin
+  select division_id into v_division from public.sale_listings where id=p_anuncio_id;
+  if not found then raise exception 'Anuncio no encontrado' using errcode='22023'; end if;
+  perform 1 from public.divisions d where d.id=v_division for update;
+  select * into v_anuncio from public.sale_listings where id=p_anuncio_id and division_id=v_division for update;
+  if not found or v_anuncio.status<>'open' or v_anuncio.expires_at<=pg_catalog.clock_timestamp() then
+    raise exception 'Anuncio no vigente' using errcode='22023';
+  end if;
+  select p.current_market_value_cents into v_valor from public.players p
+    join public.roster_ownership r on r.player_id=p.id
+    join public.teams t on t.id=r.team_id and t.division_id=r.division_id
+    where p.id=v_anuncio.player_id and not p.active
+      and r.division_id=v_division and r.owner_kind='team'
+      and r.team_id=v_anuncio.seller_team_id and t.status='active';
+  if not found then raise exception 'La baja no pertenece al equipo vendedor' using errcode='22023'; end if;
+  update public.sale_listings set computer_offer_cents=v_valor,computer_offer_at=pg_catalog.clock_timestamp()
+    where id=p_anuncio_id;
+  return v_valor;
+end;
+$$;
+revoke all on function app_private.preparar_oferta_baja_computer(uuid)
+ from public,anon,authenticated,service_role,macroliga_runner;
 commit;
