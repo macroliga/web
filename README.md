@@ -6,6 +6,8 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 **Avance del 26/11/2026:** instaladas en `macroliga-piloto` dos RPC de lectura segura para el equipo propio y las plantillas de rivales de la misma división, ensayadas con identidades ficticias y sin datos persistentes. Añadida una primera portada PWA en `app/`, **todavía sin publicar ni configurar el acceso real**. Se ha configurado una comprobación de código en GitHub Actions, pendiente de confirmar su primera ejecución correcta. Véase [la entrega del 26/11](docs/PRIMERA_PWA_Y_LECTURAS_SEGURAS_2026-11-26.md).
 
+**Portada web lista para publicar:** se ha incorporado `/index.html` como entrada de GitHub Pages, que lleva a `/app/`. El usuario debe activar **GitHub Pages → Deploy from a branch → main → /(root) → Save**. El login con los 16 entrenadores ya está vinculado a Supabase; las pantallas de juego siguen en desarrollo. [Instrucciones](docs/PUBLICAR_PRIMERA_APP_GITHUB_PAGES_2026-11-26.md).
+
 **Recursos protegidos, solo lectura:** repositorio `comuniolaviana/web`, Supabase «Comunio Laviana» y su aplicación. No se comparten claves, datos operativos ni automatizaciones.
 
 ## Qué hay realmente instalado
