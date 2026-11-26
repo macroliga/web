@@ -1,6 +1,6 @@
 -- MACROLIGA: pasarela de mercado y ventas. No abre ciclos ni habilita políticas.
 begin;
-create function public.macroliga_operaciones_mercado(p_division_id uuid)
+create or replace function public.macroliga_operaciones_mercado(p_division_id uuid)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare v_team uuid:=app_private.equipo_manager_activo(p_division_id);
  v_cycle public.market_cycles%rowtype; v_open boolean; v_sales boolean;
@@ -37,7 +37,7 @@ end; $$;
 
 -- Una sola pasarela tipada para los anuncios y ofertas. Los IDs no otorgan autoridad.
 -- Las ofertas entre managers no reservan saldo: la aceptación transaccional vuelve a validar.
-create function public.macroliga_operar_venta(p_division_id uuid,p_accion text,p_objeto uuid,p_importe_centimos bigint default null)
+create or replace function public.macroliga_operar_venta(p_division_id uuid,p_accion text,p_objeto uuid,p_importe_centimos bigint default null)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare v_team uuid:=app_private.equipo_manager_activo(p_division_id);
  v_cycle public.market_cycles%rowtype; v_listing public.sale_listings%rowtype;

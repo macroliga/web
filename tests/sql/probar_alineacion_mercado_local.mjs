@@ -22,6 +22,7 @@ try{
  grant usage on schema auth to authenticated,anon,service_role;`);
  const names=(await readdir(migrations)).filter(x=>x.endsWith('.sql')).sort();
  for(const name of names){let sql=await readFile(new URL(name,migrations),'utf8');if(name.includes('0001_core'))sql=sql.replace('create extension if not exists pgcrypto;','-- UUID nativo PostgreSQL local');await db.exec(sql);}
+ await db.exec(await readFile(new URL(names.at(-1),migrations),'utf8'));
  console.log('PASS '+names.length+' migraciones reales en '+await scalar('select version()'));
  const comp=await scalar("insert into public.competitions(code,name) values('test','Test') returning id");
  const season=await scalar("insert into public.seasons(competition_id,code,name) values($1,'test','Test') returning id",[comp]);
