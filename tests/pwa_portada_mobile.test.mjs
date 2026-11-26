@@ -34,7 +34,7 @@ test('cuatro accesos principales en 2 columnas y barra inferior de cinco', () =>
   assert.match(styles, /env\(safe-area-inset-bottom/);
 });
 test('pantallas pendientes no simulan operaciones activas', () => {
-  assert.match(app, /Todavía no hay operaciones disponibles/);
+  assert.match(html, /Todavía no hay operaciones disponibles/);
   assert.match(html, /En preparación/);
   assert.doesNotMatch(html, /Horario abierto/);
 });
