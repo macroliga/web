@@ -24,3 +24,5 @@ jobs:
         run: npm run check
       - name: Ejecutar pruebas locales
         run: npm test
+      - name: Simular las 16 cuentas historicas sin credenciales
+        run: npm run demo:preview
