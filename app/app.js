@@ -27,6 +27,11 @@ horarios();
 setInterval(horarios, 60000);
 
 function activarSesion(si) {
+  // No mantener a la vista un campo de PIN después del acceso.
+  // Los gestores de contraseñas pueden volver a rellenar campos visibles.
+  clave.value = '';
+  entrenador.closest('label').hidden = si;
+  clave.closest('label').hidden = si;
   entrenador.disabled = si;
   clave.disabled = si;
   entrar.hidden = si;
