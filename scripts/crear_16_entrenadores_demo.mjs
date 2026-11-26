@@ -4,7 +4,7 @@
 // NUNCA usar service_role en paginas web, ni compartirla por chat o GitHub.
 // La credencial local se guarda con permisos 0600 fuera del control de versiones.
 
-import { randomBytes } from 'node:crypto';
+import { generarPinesUnicos } from '../src/demo/pines.mjs';
 import { mkdir, open, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { cuentasDemostracion } from '../src/demo/entrenadores_historicos.mjs';
@@ -24,10 +24,6 @@ function comprobarIdentidad() {
   if (process.argv.some((opcion) => !['--apply', '--dry-run'].includes(opcion))) {
     throw new Error('Argumentos permitidos: --dry-run y --apply');
   }
-}
-
-function generarContrasena() {
-  return randomBytes(27).toString('base64url'); // 36 caracteres aleatorios
 }
 
 function clienteAdministrativo(clave) {
@@ -70,10 +66,10 @@ function clienteAdministrativo(clave) {
       }
       return filas[0].id;
     },
-    async crearUsuario(cuenta, contrasena) {
+    async crearUsuario(cuenta, pin) {
       const usuario = await solicitar('POST','/auth/v1/admin/users', {
         email: cuenta.correo,
-        password: contrasena,
+        password: pin,
         email_confirm: true, // alias de prueba, no se enviara correo real
         user_metadata: {demo: true, entrenador_historico: cuenta.entrenador}
       });
@@ -139,11 +135,12 @@ async function ejecutar() {
     throw new Error('Supabase Auth ya contiene cuentas. Alta automatica bloqueada por seguridad.');
   }
 
-  const credenciales = LISTA.map((cuenta) => ({
+  const pines = generarPinesUnicos(LISTA.length);
+  const credenciales = LISTA.map((cuenta, indice) => ({
     numero: cuenta.numero,
     entrenador: cuenta.entrenador,
     correo: cuenta.correo,
-    contrasena_temporal: generarContrasena()
+    pin_temporal: pines[indice]
   }));
   await prepararArchivo(credenciales);
   // Lista de operaciones revertibles en orden de creacion. Solo IDs propios.
@@ -169,7 +166,7 @@ async function ejecutar() {
 
     for (const cuenta of LISTA) {
       const temp = credenciales[cuenta.numero-1];
-      const usuario = await admin.crearUsuario(cuenta, temp.contrasena_temporal);
+      const usuario = await admin.crearUsuario(cuenta, temp.pin_temporal);
       creados.push({tipo:'auth',id:usuario});
       const manager = await admin.insertar('managers', {
         auth_user_id: usuario, display_name: cuenta.entrenador, is_admin:false
@@ -183,7 +180,7 @@ async function ejecutar() {
       console.log(`Cuenta ficticia ${cuenta.numero}/16 creada y asociada a su equipo.`);
     }
     console.log('OK: 16 cuentas ficticias y equipos en MACROLIGA piloto.');
-    console.log('Contraseñas generadas individualmente. Archivo privado local:', ARCHIVO_SECRETO);
+    console.log('PIN de 6 cifras generados por separado y guardados en archivo privado local:', ARCHIVO_SECRETO);
     console.log('Presupuestos y futbolistas siguen pendientes del reparto inicial aprobado.');
   } catch (error) {
     console.error('Alta interrumpida:', error.message);
