@@ -129,3 +129,65 @@ solo en rama de desarrollo. No se ha activado ni ampliado el mercado real.
   Búsqueda, filtros, historial, baja congelada y ausencia de desbordamiento
   horizontal; navegación, caché sin credenciales, reapertura sin PIN,
   recuperación de fallos/transitorios, dos pestañas y revocación.
+
+## Mercado inicial y clasificación (26/11/2026, actualización)
+Base verificada de dev/catalogo-integracion: 46febc476bcbc54516eb88ab4add4decfcacd138.
+Orden explícito: primero catálogo real completo y Computer, después vista de
+los 15 reservados y clasificación, y únicamente después reparto equilibrado
+de 16 equipos. No se han importado datos ni efectuado reparto real.
+
+**Instalado en macroliga-piloto** (migraciones SQL de solo lectura y sus
+auxiliares/índices):
+- 20261126161747 catalogo_lecturas_division_v01
+  (supabase/migrations/202611260005_catalogo_lecturas_division.sql).
+- 20261126161748 mercado_variado_lecturas_v01
+  (supabase/migrations/202611260006_mercado_variado_lecturas.sql).
+- 20261126162133 clasificacion_managers_v01
+  (supabase/migrations/202611260007_clasificacion_managers.sql).
+Los identificadores gestionados por Supabase difieren de los nombres locales.
+Las reversiones explícitas están en docs/propuestas. RPC públicas solo para
+authenticated, con comprobación de pertenencia activa a la división y
+search_path vacío; selector y reserva privados, sin EXECUTE de los roles
+anon/authenticated/service_role/macroliga_runner. La clasificación muestra
+el nombre del manager, valor conjunto de sus futbolistas (sin saldo) y
+puntos finales de MACROLIGA, no los puntos deportivos del proveedor; los
+empates comparten posición, con orden alfabético estable.
+
+Verificación alojada posterior: 16 equipos, 16 managers, 0 futbolistas,
+0 titularidades, 0 puntuaciones, 0 ciclos, 0 pujas. No se ha probado con
+identidades reales. Asesores: 36 INFO tablas privadas con RLS sin política,
+9 WARN RPC definer ejecutables por authenticated (cuatro nuevos endpoints de
+lectura, acceso acotado y probado con roles locales), 1 WARN preexistente de
+protección de contraseñas filtradas. Sin permisos globales nuevos ni cambios Auth.
+
+**Preparado en desarrollo, no publicado en main ni desplegado en economía**:
+- PWA: pestañas Mercado (por defecto), Jugadores, Historial, y Clasificación.
+  Vista previa de 15 futbolistas, sin pujas: objetivo 2 POR, 5 DEF, 5 MED, 3 DEL
+  (mínimo uno por posición). Selección reproducible según división y huella de
+  la última importación; no crea ciclos ni titularidades. La propuesta de
+  reparto reserva exactamente esos 15 antes de distribuir futbolistas. El
+  mercado diario conserva los arrastres del segundo día y completa las cuatro
+  posiciones; no abre si el borrador no consta de 15 elegibles con las cuatro
+  posiciones. Propuestas SQL y rollback independientes; no activar hasta la
+  validación de datos, calendario y autorización.
+- Importación administrativa exige lote completo con los puntos acumulados.
+  Sigue pendiente un fichero de origen autorizado o referencia real de
+  permiso de reutilización del proveedor; no se ha repetido la descarga de
+  diagnóstico, inventado autorización ni usado datos de Comunio Laviana.
+- No se ha cambiado la persistencia de PIN ni se ha desplegado la PWA live;
+  main permanece en 0d672eb3e09fda2ff106347947f42971fabd0334.
+
+**Pruebas efectivamente ejecutadas en esta actualización:**
+- npm test: 154/154; npm run check: correcto; git diff --check: correcto.
+- PGlite 0.3.14, PostgreSQL 17.5 desechable, ambos arneses SQL:
+  instalación/reversión, permisos, aislamiento, vista previa 2/5/5/3 sin
+  escrituras ni mercado, reserva conservada tras reparto ficticio en 16
+  equipos, clasificación inicial 16 a cero y posterior valor de plantilla,
+  puntuaciones finales/empate/negativas, ignora provisionales. Mercado diario
+  15, conserva dos arrastres, no repite otros lotes, apertura local ficticia
+  rechazada ante baja de un lote, idempotencia y falta de portero rechazada.
+  Fixtures únicamente locales; simulación de Auth, sin pgcrypto.
+- Chromium móvil Pixel 7 con API/Auth ficticias: nueve etapas superadas,
+  incluidas 15 entradas de mercado, clasificación de 16 managers inicialmente
+  a cero, PIN persistente al cerrar/reabrir, navegación, errores, salida y
+  revocación sin exposición de datos.

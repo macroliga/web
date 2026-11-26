@@ -54,7 +54,13 @@ try {
   }
 
   await db.exec(await sql(proposal));await db.exec(await sql(rollback));await db.exec(await sql(proposal));
-  const reads='docs/propuestas/20261126_catalogo_lectura_division.sql';
+  const reads='supabase/migrations/202611260005_catalogo_lecturas_division.sql';
+  const selector='supabase/migrations/202611260006_mercado_variado_lecturas.sql';
+  const daily='docs/propuestas/20261126_mercado_variado_diario.sql';
+  await db.exec(await sql(selector));await db.exec(await sql(daily));
+  await db.exec(await sql('docs/propuestas/20261126_mercado_variado_diario_rollback.sql'));
+  await db.exec(await sql('docs/propuestas/20261126_mercado_variado_lectura_rollback.sql'));
+  await db.exec(await sql(selector));await db.exec(await sql(daily));
   const sale='docs/propuestas/20261126_bajas_venta_computer.sql';
   const saleRollback='docs/propuestas/20261126_bajas_venta_computer_rollback.sql';
   await db.exec(await sql(reads));await db.exec(await sql('docs/propuestas/20261126_catalogo_lectura_division_rollback.sql'));await db.exec(await sql(reads));
@@ -226,6 +232,36 @@ try {
     const grants=(await query("select has_function_privilege($1,'app_private.importar_catalogo_comuniazo(uuid,jsonb,jsonb,uuid)','EXECUTE') imp,has_function_privilege($1,'public.macroliga_catalogo_division(uuid,uuid,int)','EXECUTE') read,has_function_privilege($1,'public.macroliga_historial_traspasos(uuid,timestamptz,uuid,int)','EXECUTE') history,has_table_privilege($1,'app_private.catalogo_comuniazo_puntos','SELECT') points,has_function_privilege($1,'app_private.preparar_oferta_baja_computer(uuid)','EXECUTE') quote",[role]))[0];
     assert.deepEqual(grants,{imp:false,read:role==='authenticated',history:role==='authenticated',points:false,quote:false});
   }
+  // Mercado diario: reservar 15 en borrador, conservar lotes del día 1
+  // al día 2, no repetir otros lotes del anterior, garantizar las 4 posiciones.
+  const prepare=async(d,offset)=>(await query('select * from app_private.preparar_mercado_diario($1,current_date+$2::int)',[d,offset]))[0];
+  const first=await prepare(division,3);assert.deepEqual(await prepare(division,3),first);
+  const firstLots=await query("select l.player_id,p.position from public.market_lots l join public.players p on p.id=l.player_id where cycle_id=$1",[first.ciclo_id]);
+  assert.deepEqual(Object.fromEntries(['GK','DEF','MID','FWD'].map(pos=>[pos,firstLots.filter(x=>x.position===pos).length])),{GK:2,DEF:5,MID:5,FWD:3});
+  // Simulación local del cierre de 13 ganadores; quedan 2 arrastres MID.
+  const carry=firstLots.filter(p=>p.position==='MID').slice(0,2).map(p=>p.player_id);
+  await query("update public.market_lots set status=case when player_id=any($2::uuid[]) then 'expired' else 'awarded' end where cycle_id=$1",[first.ciclo_id,carry]);
+  await query("update public.market_cycles set status='published' where id=$1",[first.ciclo_id]);
+  const secondMarket=await prepare(division,4);assert.equal(secondMarket.arrastrados,2);assert.equal(secondMarket.nuevos,13);
+  const secondLots=await query("select l.player_id,l.day_number,p.position from public.market_lots l join public.players p on p.id=l.player_id where cycle_id=$1",[secondMarket.ciclo_id]);
+  assert.equal(secondLots.length,15);assert.equal(new Set(secondLots.map(p=>p.position)).size,4);
+  assert.deepEqual(secondLots.filter(x=>x.day_number===2).map(x=>x.player_id).sort(),carry.sort());
+  assert.ok(secondLots.filter(x=>x.day_number===1).every(x=>!firstLots.some(y=>x.player_id===y.player_id)));
+  // Apertura local ficticia: si una baja invalida los lotes, no se abre.
+  const invalid=secondLots[0].player_id;
+  await query("update public.market_cycles set opens_at=clock_timestamp()-interval '2 hours',closes_at=clock_timestamp()+interval '1 hour',publishes_at=clock_timestamp()+interval '2 hours' where id=$1",[secondMarket.ciclo_id]);
+  const open=async()=>(await query("select app_private.abrir_mercado_diario($1) n",[secondMarket.ciclo_id]))[0].n;
+  await query("update public.players set active=false where id=$1",[invalid]);
+  await assert.rejects(open(),/cuatro posiciones/);
+  assert.equal((await query("select status from public.market_cycles where id=$1",[secondMarket.ciclo_id]))[0].status,'draft');
+  await query("update public.players set active=true where id=$1",[invalid]);
+  assert.equal(await open(),15);assert.equal(await open(),0);
+  console.log('PASS apertura ficticia rechaza lotes no elegibles y es idempotente');
+  // Si faltan los porteros, no preparar un mercado incompleto.
+  await db.exec("update public.players set active=false where position='GK'");
+  await assert.rejects(prepare(other,5),/cuatro posiciones|15 jugadores/);
+  assert.equal((await query("select count(*)::int n from public.market_cycles where division_id=$1",[other]))[0].n,0);
+  console.log('PASS mercado diario variado, 15 lotes, dos arrastres, cierre seguro si falta una posición');
   await assert.rejects(db.exec(await sql(rollback)),/plan de datos/);await db.exec('rollback');
   assert.equal((await query('select count(*)::int n from public.player_fixture_points'))[0].n,0);
   assert.equal((await query('select count(*)::int n from app_private.catalogo_comuniazo_bajas_equipo_malo'))[0].n,1);

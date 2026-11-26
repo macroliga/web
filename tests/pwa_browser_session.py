@@ -73,6 +73,9 @@ class Auth:
             assert body == {'p_equipo_id':'ficticio'}
             return respond([{'nombre_jugador':'Futbolista ficticio','posicion':'DEL','club':'Prueba',
                              'valor_mercado_centimos':1000000}])
+        if path.endswith('macroliga_mercado_visible'):
+            assert body == {'p_division_id':'division-prueba'}
+            return respond([{'jugador_id':f'm{i}','nombre_jugador':f'Ficticio {i}','posicion':pos,'club':'Club ficticio','valor_mercado_centimos':'1000000','puntos_acumulados':i,'estado':'preview'} for i,pos in enumerate(['GK']*2+['DEF']*5+['MID']*5+['FWD']*3)])
         if path.endswith('macroliga_catalogo_division'):
             assert body == {'p_division_id':'division-prueba','p_despues':None,'p_limite':250}
             return respond([
@@ -82,6 +85,9 @@ class Auth:
         if path.endswith('macroliga_historial_traspasos'):
             assert body == {'p_division_id':'division-prueba','p_antes_fecha':None,'p_antes_id':None,'p_limite':50}
             return respond([{'traspaso_id':'h1','fecha':'2026-11-26T10:00:00+00:00','nombre_jugador':'Jugador ficticio vendido','importe_centimos':'800000','origen':'Equipo A','destino':'Computer','tipo':'computer_sale'}])
+        if path.endswith('macroliga_clasificacion'):
+            assert body == {'p_division_id':'division-prueba'}
+            return respond([{'posicion':1,'equipo_id':f'e{i}','nombre_manager':f'Manager ficticio {i}','nombre_equipo':f'Equipo {i}','valor_equipo_centimos':'0','puntos':0,'es_mi_equipo':i==0} for i in range(16)])
         if path.endswith('macroliga_admin_arranque_estado'):
             return respond({'code':'42501'},403)
         raise AssertionError('Operacion no permitida')
@@ -134,6 +140,9 @@ def run(source):
                 login(page)
                 assert_saved(page)
                 page.locator('[data-view="market"]').first.click()
+                expect(page.locator('#market-current-list li')).to_have_count(15)
+                expect(page.locator('#market-current-status')).to_contain_text('2 POR · 5 DEF · 5 MED · 3 DEL')
+                page.click('#market-players-tab')
                 expect(page.locator('#catalog-status')).to_contain_text('2 de 2 jugadores')
                 page.fill('#catalog-search','alvaro')
                 expect(page.locator('#catalog-list')).to_contain_text('Álvaro ficticio')
@@ -152,6 +161,14 @@ def run(source):
                 expect(page.locator('#history-list li')).to_have_count(0)
                 private(page)
                 print('PASS mercado móvil: búsqueda, filtros, baja congelada, historial y salida sin PIN',flush=True)
+                page.locator('.bottom-nav [data-view="standings"]').click()
+                expect(page.locator('#standings-rows tr')).to_have_count(16)
+                expect(page.locator('#standings-status')).to_contain_text('16 managers')
+                expect(page.locator('#standings-rows .my-standing')).to_contain_text('Manager ficticio 0')
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.locator('.bottom-nav [data-view="home"]').click()
+                expect(page.locator('#standings-rows tr')).to_have_count(0)
+                print('PASS clasificación móvil de 16 managers a cero y salida sin PIN',flush=True)
                 for view in ('team','market','rules','home','lineup','cup','standings','admin','home'):
                     page.locator('.bottom-nav [data-view="home"]').click()
                     page.locator(f'[data-view="{view}"]:visible').first.click()
@@ -161,8 +178,8 @@ def run(source):
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v13'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v13").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v15'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v15").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)

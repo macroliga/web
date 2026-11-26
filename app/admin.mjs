@@ -69,10 +69,11 @@ export function crearPanelAdmin(root,contexto) {
     if(!file||file.size>12_000_000){say('Selecciona un JSON de catálogo autorizado (máximo 12 MB).');return;}
     locks(true);say('Validando catálogo…');
     try {
-      const snapshot=JSON.parse(await file.text());
+      const lote=JSON.parse(await file.text());
+      const snapshot=lote?.catalogo,puntos=lote?.puntos;
       if(!visible(g,c))return;
-      if(snapshot.kind!=='authorized'||!snapshot.permissionRef||!Array.isArray(snapshot.players))throw Object.assign(Error('Catálogo no autorizado o incompleto.'),{adminMessage:'Catálogo no autorizado o incompleto.'});
-      await call('macroliga_admin_importar_catalogo',{p_catalogo:snapshot});
+      if(snapshot?.kind!=='authorized'||!snapshot.permissionRef||!Array.isArray(snapshot.players)||!Array.isArray(puntos)||puntos.length!==snapshot.players.filter(p=>p.active).length)throw Object.assign(Error('Lote de catálogo y puntos no autorizado o incompleto.'),{adminMessage:'Lote de catálogo y puntos no autorizado o incompleto.'});
+      await call('macroliga_admin_importar_catalogo',{p_catalogo:snapshot,p_puntos:puntos});
       if(visible(g,c))await show();
     } catch(e){if(visible(g,c))say(errorText(e));}finally{if(generation===g)locks(false);}
   });

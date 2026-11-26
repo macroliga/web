@@ -69,6 +69,7 @@ export function crearPanelCatalogo(root,contexto){
   const list=el('catalog-list'),status=el('catalog-status'),search=el('catalog-search'),owner=el('catalog-owner'),club=el('catalog-club');
   const position=el('catalog-position'),minPoints=el('catalog-min-points'),maxPoints=el('catalog-max-points'),minValue=el('catalog-min-value'),maxValue=el('catalog-max-value'),sort=el('catalog-sort');
   const prev=el('catalog-prev'),next=el('catalog-next'),histList=el('history-list'),histStatus=el('history-status'),histMore=el('history-more');
+  const marketView=el('market-current-view'),marketTab=el('market-current-tab'),marketList=el('market-current-list'),marketStatus=el('market-current-status');
   const playersView=el('market-players-view'),historyView=el('market-history-view'),playersTab=el('market-players-tab'),historyTab=el('market-history-tab');
   let generation=0,rows=[],loaded=false,page=0,history=[],historyLoaded=false,historyBusy=false,historyDone=false,ctx=null;
   const valid=(g,c)=>g===generation&&contexto()?.division===c?.division&&contexto()?.identity===c?.identity&&Boolean(contexto()?.token);
@@ -132,22 +133,44 @@ export function crearPanelCatalogo(root,contexto){
     }catch(err){if(valid(g,c)){histStatus.textContent='No se pudo consultar el historial. Puedes reintentar.';histMore.hidden=false;}}
     finally{if(valid(g,c)){historyBusy=false;histMore.disabled=false;}}
   }
+  async function loadMarket(c,g){
+    marketStatus.textContent='Consultando mercado…';
+    try{
+      const result=await call(c,'macroliga_mercado_visible',{});
+      if(!valid(g,c))return;
+      if(!Array.isArray(result)||result.length>15||new Set(result.map(r=>r.jugador_id)).size!==result.length)throw Error('Respuesta inválida');
+      marketList.replaceChildren();
+      if(!result.length){marketStatus.textContent='Todavía no hay mercado preparado ni abierto.';return;}
+      const state=result[0].estado;
+      if(!['preview','draft','open'].includes(state)||result.some(r=>r.estado!==state))throw Error('Estado incoherente');
+      const counts=Object.keys(posiciones).map(p=>result.filter(r=>r.posicion===p).length);
+      if((state==='preview'||state==='draft')&&(result.length!==15||counts.some(n=>n===0)))throw Error('Mercado incompleto');
+      marketStatus.textContent=(state==='preview'?'Vista previa · reservados para el reparto · sin pujas':state==='draft'?'Mercado preparado · no abierto':'Mercado abierto · consulta')+' · '+result.length+' jugadores · '+counts.map((n,i)=>n+' '+['POR','DEF','MED','DEL'][i]).join(' · ');
+      for(const r of result){
+        const li=doc.createElement('li'),name=doc.createElement('strong'),info=doc.createElement('span');
+        name.textContent=r.nombre_jugador;
+        info.textContent=[posiciones[r.posicion],r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts',state==='open'?'Día '+r.dia_mercado:''].filter(Boolean).join(' · ');
+        li.appendChild(name);li.appendChild(info);marketList.appendChild(li);
+      }
+    }catch(err){if(valid(g,c))marketStatus.textContent='No se pudo consultar el mercado. No se admite ninguna puja desde esta vista.';}
+  }
   function tab(name){
-    const h=name==='history';
-    playersView.hidden=h;historyView.hidden=!h;
-    playersTab.setAttribute('aria-pressed',String(!h));historyTab.setAttribute('aria-pressed',String(h));
+    const h=name==='history',m=name==='market',p=name==='players';
+    marketView.hidden=!m;playersView.hidden=!p;historyView.hidden=!h;
+    marketTab.setAttribute('aria-pressed',String(m));playersTab.setAttribute('aria-pressed',String(p));historyTab.setAttribute('aria-pressed',String(h));
     if(h&&!historyLoaded)void loadHistory();
   }
   function clear(){
     generation++;rows=[];loaded=false;page=0;history=[];historyLoaded=false;historyBusy=false;historyDone=false;ctx=null;
-    list.replaceChildren();histList.replaceChildren();status.textContent='';histStatus.textContent='';histMore.hidden=true;prev.disabled=true;next.disabled=true;
+    list.replaceChildren();histList.replaceChildren();marketList.replaceChildren();marketStatus.textContent='';status.textContent='';histStatus.textContent='';histMore.hidden=true;prev.disabled=true;next.disabled=true;
     for(const input of [search,position,minPoints,maxPoints,minValue,maxValue])input.value='';
-    selectors();sort.value='name';tab('players');root.hidden=true;
+    selectors();sort.value='name';tab('market');root.hidden=true;
   }
   async function show(){
     clear();root.hidden=false;const c={...contexto()},g=generation;ctx=c;
     if(!c.division||!c.token){status.textContent='Catálogo no disponible.';return;}
     status.textContent='Consultando jugadores…';
+    void loadMarket(c,g);
     try{
       const result=await cargarCatalogo((name,args)=>call(c,name,args),()=>valid(g,c));
       if(!valid(g,c)||result===null)return;
@@ -159,6 +182,7 @@ export function crearPanelCatalogo(root,contexto){
   for(const field of [owner,club,position,sort])field.addEventListener('change',changed);
   prev.addEventListener('click',()=>{page=Math.max(0,page-1);render();});
   next.addEventListener('click',()=>{page++;render();});
+  marketTab.addEventListener('click',()=>tab('market'));
   playersTab.addEventListener('click',()=>tab('players'));historyTab.addEventListener('click',()=>tab('history'));
   histMore.addEventListener('click',()=>void loadHistory());
   el('catalog-reset').addEventListener('click',()=>{for(const x of [search,club,position,minPoints,maxPoints,minValue,maxValue])x.value='';owner.value='all';sort.value='name';changed();});

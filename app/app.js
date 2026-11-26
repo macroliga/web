@@ -1,6 +1,7 @@
-import { crearCliente } from './api.mjs?v=13';
-import { crearPanelCatalogo } from './catalogo.mjs?v=13';
-import { crearPanelAdmin } from './admin.mjs?v=11';
+import { crearCliente } from './api.mjs?v=15';
+import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
+import { crearPanelCatalogo } from './catalogo.mjs?v=14';
+import { crearPanelAdmin } from './admin.mjs?v=14';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
@@ -49,6 +50,7 @@ const NOTA_NORMAL = note.textContent;
 const storage = (() => { try { return window.localStorage; } catch { return null; } })();
 
 const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
+const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 
 function aviso(texto) {
@@ -74,15 +76,16 @@ function cambiarVista(nombre) {
   }
   if (panelAdmin) {
     const placeholder = el('section-placeholder');
-    placeholder.hidden = nombre === 'admin';
+    placeholder.hidden = nombre === 'admin' || (nombre === 'standings' && Boolean(panelClasificacion));
     placeholder.classList.toggle('market-summary', nombre === 'market');
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
   if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();
+  if (nombre === 'standings') void panelClasificacion?.show(); else panelClasificacion?.clear();
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  divisionActual = null; identidadActual = null; panelAdmin?.clear(); panelCatalogo?.clear();
+  divisionActual = null; identidadActual = null; panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-players','team-capacity']) {
     el(id).textContent = '—';

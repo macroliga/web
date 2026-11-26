@@ -1,4 +1,4 @@
--- PROPUESTA NO DESPLEGADA. Lecturas paginadas, solo managers de su división.
+-- Migración aplicada en macroliga-piloto. Lecturas paginadas, solo managers de su división.
 begin;
 create index catalogo_comuniazo_puntos_jugador_idx on app_private.catalogo_comuniazo_puntos(player_id,import_run_id);
 create index transfer_operations_historial_idx on public.transfer_operations(division_id,(coalesce(effective_at,created_at)) desc,id desc) where status='committed';

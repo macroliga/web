@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=10">
+  <link rel="stylesheet" href="./styles.css?v=12">
 </head>
 <body>
   <div class="shell">
@@ -130,10 +130,17 @@
           </div>
           <div id="market-catalog" class="detail-card catalog-panel" hidden>
             <div class="market-tabs" aria-label="Consultas de mercado">
-              <button type="button" id="market-players-tab" aria-pressed="true">Jugadores</button>
+              <button type="button" id="market-current-tab" aria-pressed="true">Mercado</button>
+              <button type="button" id="market-players-tab" aria-pressed="false">Jugadores</button>
               <button type="button" id="market-history-tab" aria-pressed="false">Historial</button>
             </div>
-            <div id="market-players-view" class="catalog-content">
+            <div id="market-current-view" class="catalog-content">
+              <h2>Mercado de 15 jugadores</h2>
+              <p>Porteros, defensas, centrocampistas y delanteros. La selección inicial se reserva hasta completar el reparto.</p>
+              <p id="market-current-status" role="status"></p>
+              <ul id="market-current-list" aria-label="Jugadores del mercado"></ul>
+            </div>
+            <div id="market-players-view" class="catalog-content" hidden>
               <h2>Todos los jugadores</h2>
               <p>Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.</p>
               <label for="catalog-search">Buscar jugador, club o manager</label>
@@ -162,12 +169,20 @@
               <button type="button" id="history-more" hidden>Cargar más traspasos</button>
             </div>
           </div>
+          <section id="standings-panel" class="detail-card standings-panel" hidden aria-labelledby="standings-heading">
+            <h2 id="standings-heading">Clasificación</h2>
+            <p id="standings-status" role="status"></p>
+            <table class="standings-table">
+              <thead><tr><th scope="col">Pos.</th><th scope="col">Manager</th><th scope="col">Valor equipo</th><th scope="col">Pts</th></tr></thead>
+              <tbody id="standings-rows"></tbody>
+            </table>
+          </section>
           <div id="admin-panel" class="detail-card admin-panel" hidden>
             <h2>Arranque de la división</h2>
             <p id="admin-state"></p><p id="admin-message" role="status"></p>
             <form id="admin-import-form" hidden>
               <h3>1. Catálogo completo</h3>
-              <label for="admin-file">Archivo JSON autorizado de jugadores y valores</label>
+              <label for="admin-file">Lote JSON autorizado de jugadores, valores y puntos</label>
               <input id="admin-file" type="file" accept=".json,application/json" required>
               <label><input type="checkbox" id="admin-source-confirm" required> Dispongo de autorización para utilizar estos datos.</label>
               <button type="submit">Cargar catálogo</button>
@@ -213,6 +228,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=13"></script>
+  <script type="module" src="./app.js?v=15"></script>
 </body>
 </html>

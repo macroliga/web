@@ -7,7 +7,7 @@ do $$ begin
 end; $$;
 drop function public.macroliga_admin_aplicar_reparto(uuid,uuid);
 drop function public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date);
-drop function public.macroliga_admin_importar_catalogo(uuid,jsonb);
+drop function public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb);
 drop function public.macroliga_admin_arranque_estado(uuid);
 drop function app_private.admin_huella(uuid);
 drop function app_private.admin_arranque_vacio(uuid);

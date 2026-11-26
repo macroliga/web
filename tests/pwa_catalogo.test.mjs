@@ -35,14 +35,14 @@ class Element {
  addEventListener(name,fn){this.events.set(name,fn);} dispatch(name){return this.events.get(name)?.();} setAttribute(){} replaceChildren(...children){this.children=children;} appendChild(x){this.children.push(x);}
 }
 function dom(){
- const keys=['catalog-search','catalog-owner','catalog-club','catalog-position','catalog-min-points','catalog-max-points','catalog-min-value','catalog-max-value','catalog-sort','catalog-list','catalog-status','catalog-prev','catalog-next','catalog-reset','history-list','history-status','history-more','market-players-view','market-history-view','market-players-tab','market-history-tab'];
+ const keys=['catalog-search','catalog-owner','catalog-club','catalog-position','catalog-min-points','catalog-max-points','catalog-min-value','catalog-max-value','catalog-sort','catalog-list','catalog-status','catalog-prev','catalog-next','catalog-reset','history-list','history-status','history-more','market-players-view','market-history-view','market-players-tab','market-history-tab','market-current-view','market-current-tab','market-current-list','market-current-status'];
  const e=Object.fromEntries(keys.map(k=>[k,new Element()]));
  const root=new Element();root.ownerDocument={createElement:()=>new Element()};root.querySelector=k=>e[k.slice(1)];
  return {root,e};
 }
 test('catálogo y resultados no persisten al salir o cambiar identidad, incluso petición pendiente',async()=>{
  const {root,e}=dom();let release;
- const ctx={token:'ficticio',division:'d1',identity:'t1',client:{consultar:async(n,p,t)=>{assert.equal(n,'macroliga_catalogo_division');assert.deepEqual(p,{p_division_id:'d1',p_despues:null,p_limite:250});assert.equal(t,'ficticio');return new Promise(r=>release=r);}}};
+ const ctx={token:'ficticio',division:'d1',identity:'t1',client:{consultar:async(n,p,t)=>{if(n==='macroliga_mercado_visible')return [];assert.equal(n,'macroliga_catalogo_division');assert.deepEqual(p,{p_division_id:'d1',p_despues:null,p_limite:250});assert.equal(t,'ficticio');return new Promise(r=>release=r);}}};
  const panel=crearPanelCatalogo(root,()=>ctx);
  let pending=panel.show();panel.clear();release(rows);await pending;
  assert.equal(root.hidden,true);assert.equal(e['catalog-list'].children.length,0);
@@ -57,6 +57,7 @@ test('historial de solo lectura carga de forma diferida y se borra al salir',asy
  const rec={traspaso_id:'h1',fecha:'2026-11-26T10:00:00+00:00',nombre_jugador:'Ficticio',importe_centimos:'810050',origen:'Equipo A',destino:'Computer',tipo:'computer_sale'};
  const ctx={token:'ficticio',division:'d1',identity:'t1',client:{consultar:async(n,p,t)=>{
    if(n==='macroliga_catalogo_division')return rows;
+   if(n==='macroliga_mercado_visible')return [];
    historyCalls++;assert.equal(n,'macroliga_historial_traspasos');assert.equal(t,'nuevo-token');assert.deepEqual(p,{p_division_id:'d1',p_antes_fecha:null,p_antes_id:null,p_limite:50});return new Promise(r=>release=r);
  }}};
  const panel=crearPanelCatalogo(root,()=>ctx);await panel.show();assert.equal(historyCalls,0);
@@ -67,10 +68,25 @@ test('historial de solo lectura carga de forma diferida y se borra al salir',asy
 });
 test('consulta catálogo e historial exclusivamente por RPC con JWT de usuario',async()=>{
  const c=crearCliente({supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co',anonKey:'sb_publishable_ficticia',fetchImpl:async(url,o)=>{
-  assert.match(url,/rpc\/macroliga_(catalogo_division|historial_traspasos)$/);assert.equal(o.headers.Authorization,'Bearer ficticio');return {ok:true,json:async()=>rows};
+  assert.match(url,/rpc\/macroliga_(catalogo_division|historial_traspasos|mercado_visible)$/);assert.equal(o.headers.Authorization,'Bearer ficticio');return {ok:true,json:async()=>rows};
  }});
- for(const name of ['macroliga_catalogo_division','macroliga_historial_traspasos']){
+ for(const name of ['macroliga_catalogo_division','macroliga_historial_traspasos','macroliga_mercado_visible']){
   await assert.rejects(c.consultar(name,{},null),/iniciar sesion/);
   assert.deepEqual(await c.consultar(name,{p_division_id:'d1'},'ficticio'),rows);
  }
+});
+
+test('mercado inicial muestra 15 variados, sin admitir pujas ni generar movimientos',async()=>{
+ const {root,e}=dom();
+ const pos=['GK','GK',...Array(5).fill('DEF'),...Array(5).fill('MID'),...Array(3).fill('FWD')];
+ const market=pos.map((p,i)=>({jugador_id:'m'+i,nombre_jugador:'Ficticio '+i,posicion:p,club:'Club de prueba',estado:'preview',valor_mercado_centimos:'1000000',puntos_acumulados:i}));
+ const calls=[];
+ const ctx={token:'ficticio',division:'d1',identity:'t1',client:{consultar:async(n,p)=>{calls.push(n);assert.equal(p.p_division_id,'d1');return n==='macroliga_mercado_visible'?market:rows;}}};
+ const panel=crearPanelCatalogo(root,()=>ctx);await panel.show();
+ assert.equal(e['market-current-view'].hidden,false);
+ assert.equal(e['market-current-list'].children.length,15);
+ assert.match(e['market-current-status'].textContent,/Vista previa.*sin pujas.*2 POR.*5 DEF.*5 MED.*3 DEL/);
+ assert.deepEqual(calls,['macroliga_mercado_visible','macroliga_catalogo_division']);
+ e['market-players-tab'].dispatch('click');assert.equal(e['market-current-view'].hidden,true);
+ panel.clear();assert.equal(e['market-current-list'].children.length,0);
 });

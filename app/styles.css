@@ -113,3 +113,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .market-filter summary{cursor:pointer;font-weight:700;font-size:13px}
 .market-filter[open] summary{margin-bottom:10px}
 .empty-state.market-summary{min-height:0;padding:12px 16px;gap:5px}.market-summary .empty-icon{display:none}.market-summary .status-text{margin-top:2px}
+.market-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.market-tabs button{font-size:12px;padding:7px 3px}
+
+.standings-panel h2{margin:0 0 8px}.standings-panel p{color:#586e7b;font-size:12px}
+.standings-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:13px}
+.standings-table th,.standings-table td{padding:9px 4px;border-bottom:1px solid #e7eef0;text-align:left;vertical-align:middle}
+.standings-table th{font-size:11px;color:#586e7b}.standings-table th:nth-child(3),.standings-table th:nth-child(4),.standings-table td:nth-child(3),.standings-table td:nth-child(4){text-align:right;font-variant-numeric:tabular-nums}
+.standings-table td:nth-child(2){overflow-wrap:anywhere}.standings-table small{display:block;color:#586e7b;font-size:10px}
+.standings-table .my-standing{background:#e8f4f4;font-weight:700}

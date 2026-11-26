@@ -1,6 +1,6 @@
 -- PROPUESTA, NO DESPLEGADA. Alternativa al arranque combinado anterior.
 -- Exclusivamente macroliga-piloto. Catálogo global inicial, reparto por división.
--- Requiere la migración 202611260004_catalogo_comuniazo_privado.sql.
+-- Requiere catálogo privado y 202611260006_mercado_variado_lecturas.sql.
 begin;
 create table app_private.admin_repartos (
   id uuid primary key default gen_random_uuid(),
@@ -62,14 +62,14 @@ begin
     from public.divisions d join public.seasons s on s.id=d.season_id where d.id=p_division);
 end; $$;
 
-create function public.macroliga_admin_importar_catalogo(p_division uuid,p_catalogo jsonb) returns jsonb
+create function public.macroliga_admin_importar_catalogo(p_division uuid,p_catalogo jsonb,p_puntos jsonb default null) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare v_actor uuid; v_season uuid;
 begin
  v_actor:=app_private.admin_exigir(p_division);
  select season_id into strict v_season from public.divisions where id=p_division;
  -- Mismo núcleo de propietario que las descargas. No hay dos rutas de escritura.
- return app_private.importar_catalogo_comuniazo(v_season,p_catalogo,null,v_actor);
+ return app_private.importar_catalogo_comuniazo(v_season,p_catalogo,p_puntos,v_actor);
 end; $$;
 
 -- Simulación: 24 muestras deterministas, asignación descendente al equipo
@@ -81,7 +81,7 @@ declare
  v_slots int[]; v_size int; v_positions text[]:=array['GK','DEF','MID','FWD'];
  v_teams uuid[]; v_names text[]; v_count int:=16;
  v_total bigint[]; v_perpos int[]; v_owner int[]; v_values bigint[]; v_ids uuid[]; v_pos int[];
- v_best_total bigint[]; v_best_owner int[]; v_best_values bigint[]; v_best_ids uuid[]; v_best_pos int[];
+ v_best_total bigint[]; v_best_owner int[]; v_best_values bigint[]; v_best_ids uuid[]; v_best_pos int[]; v_reserva uuid[];
  v_best_spread bigint; v_spread bigint; v_min bigint; v_max_value bigint;
  v_attempt int; v_p int; v_i int; v_j int; v_k int; v_team int; v_record record; v_ok boolean;
  v_low int; v_high int; v_delta bigint; v_gain numeric; v_best_gain numeric; v_a int; v_b int;
@@ -110,10 +110,12 @@ begin
  v_open:=(p_market_date::timestamp+time '06:00') at time zone v_tz;
  if v_open<=clock_timestamp() then raise exception 'Elegir una fecha futura para el mercado en borrador'; end if;
  v_budget:=p_wealth-p_min_cash;
+ select array_agg(r.jugador_id order by r.orden) into v_reserva from app_private.reserva_mercado_inicial(p_division) r;
+ if cardinality(v_reserva) is distinct from 15 then raise exception 'Mercado inicial de 15 no disponible';end if;
  if (select count(*) from public.players where active and current_market_value_cents>0)<v_count*v_size+15 then
    raise exception 'Faltan futbolistas activos con valor para plantillas y mercado'; end if;
  for v_p in 1..4 loop
-   if (select count(*) from public.players where active and current_market_value_cents between 1 and v_budget and position=v_positions[v_p])<v_count*v_slots[v_p] then
+   if (select count(*) from public.players where active and current_market_value_cents between 1 and v_budget and position=v_positions[v_p] and not(id=any(v_reserva)))<v_count*v_slots[v_p] then
       raise exception 'Faltan futbolistas elegibles en %',v_positions[v_p];
    end if;
  end loop;
@@ -129,7 +131,7 @@ begin
        with ranked as (
          select id,current_market_value_cents val,row_number() over(order by current_market_value_cents,id) rn,
          count(*) over() n
-         from public.players where active and current_market_value_cents between 1 and v_budget and position=v_positions[v_p]
+         from public.players where active and current_market_value_cents between 1 and v_budget and position=v_positions[v_p] and not(id=any(v_reserva))
        ), sample as (
          select id,val from ranked where rn<=greatest(v_count*v_slots[v_p],n*(24-v_attempt)/23)
          order by case when v_attempt=24 then rn else 0 end,md5(p_seed||':'||v_attempt||':'||id::text),id
@@ -204,10 +206,8 @@ begin
      'players',(select jsonb_agg(jsonb_build_object('id',v_best_ids[n],'name',p.name,'position',v_positions[v_best_pos[n]],'valueCents',v_best_values[n]::text) order by v_best_ids[n]) from generate_subscripts(v_best_ids,1) n join public.players p on p.id=v_best_ids[n] where v_best_owner[n]=v_i),
      'rosterValueCents',v_best_total[v_i]::text,'cashCents',(p_wealth-v_best_total[v_i])::text,'wealthCents',p_wealth::text));
  end loop;
- select jsonb_agg(jsonb_build_object('id',id,'name',name,'position',position,'valueCents',current_market_value_cents::text) order by rank,id)
- into v_market from (select id,name,position,current_market_value_cents,md5(p_seed||':market:'||id::text) rank
-  from public.players where active and current_market_value_cents>0 and not(id=any(v_best_ids))
-  order by rank,id limit 15) m;
+ select jsonb_agg(jsonb_build_object('id',p.id,'name',p.name,'position',p.position,'valueCents',p.current_market_value_cents::text) order by r.n)
+ into v_market from unnest(v_reserva) with ordinality r(id,n) join public.players p on p.id=r.id;
  if jsonb_array_length(v_market) is distinct from 15 then raise exception 'Reserva insuficiente para mercado'; end if;
  v_plan:=jsonb_build_object('wealthCents',p_wealth::text,'minimumCashCents',p_min_cash::text,'slots',p_slots,'marketDate',p_market_date,
    'rosterSpreadCents',v_best_spread::text,'greedySpreadCents',v_original_spread::text,'allocations',v_alloc,'marketPlayers',v_market,'seed',p_seed);
@@ -279,9 +279,9 @@ end; $$;
 
 revoke all on function app_private.admin_exigir(uuid),app_private.admin_arranque_vacio(uuid),app_private.admin_huella(uuid)
  from public,anon,authenticated,service_role,macroliga_runner;
-revoke all on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb),
+revoke all on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb),
  public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date),public.macroliga_admin_aplicar_reparto(uuid,uuid)
  from public,anon,authenticated,service_role,macroliga_runner;
-grant execute on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb),
+grant execute on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb),
  public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date),public.macroliga_admin_aplicar_reparto(uuid,uuid) to authenticated;
 commit;
