@@ -35,7 +35,18 @@ try{
  const player=async(name,pos='MID')=>scalar("insert into public.players(name,position,current_market_value_cents) values($1,$2,100000000) returning id",[name,pos]);
  const p1=await player('Uno','GK'),p2=await player('Dos'),p3=await player('Tres'),p4=await player('Computer');
  for(const [p,t,d] of [[p1,teams[0],div],[p2,teams[0],div],[p3,teams[1],div]])await q("insert into public.roster_ownership(division_id,player_id,team_id,owner_kind) values($1,$2,$3,'team')",[d,p,t]);
+ const lineas={GK:[p1],DEF:[],MID:[p2],FWD:[]};
+ for(const [pos,n] of Object.entries({GK:2,DEF:5,MID:5,FWD:3})){
+   while(lineas[pos].length<n){
+     const p=await player('Ficticio '+pos+lineas[pos].length,pos);
+     await q("insert into public.roster_ownership(division_id,player_id,team_id,owner_kind) values($1,$2,$3,'team')",[div,p,teams[0]]);
+     lineas[pos].push(p);
+   }
+ }
  const slots=[p1,p2,...Array(9).fill(null)];
+ const formaciones=[[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1]];
+ const once=([d,m,f])=>[p1,...lineas.DEF.slice(0,d),...lineas.MID.slice(0,m),...lineas.FWD.slice(0,f)];
+
  await as(null,'anon');
  await denied(rpc('macroliga_estado_alineacion',[div]),/permission denied/);
  await denied(rpc('macroliga_operaciones_mercado',[div]),/permission denied/);
@@ -50,6 +61,7 @@ try{
  await denied(rpc('macroliga_guardar_alineacion',[div,null,slots,0]),/ha cambiado/);
  await denied(rpc('macroliga_guardar_alineacion',[div,null,[p1,p1,...Array(9).fill(null)],1]),/No repitas/);
  await denied(rpc('macroliga_guardar_alineacion',[div,null,[p3,...Array(10).fill(null)],1]),/tu plantilla/);
+ await denied(rpc('macroliga_guardar_alineacion',[div,null,[...lineas.GK,...Array(9).fill(null)],1]),/Formación inválida/);
  await as(users[1]);assert.equal((await rpc('macroliga_estado_alineacion',[div])).borrador,null);
  await denied(rpc('macroliga_guardar_alineacion',[div,null,slots,0]),/tu plantilla/);
  await owner();
@@ -57,11 +69,21 @@ try{
  const f=await scalar("insert into public.fixtures(provider,external_id,kickoff_at,status) values('test','1',now()+interval '20 minutes','TIMED') returning id");
  await q('insert into public.gameweek_fixtures values($1,$2)',[j,f]);
  await as(users[0]);let data=await rpc('macroliga_estado_alineacion',[div]);assert.equal(data.editable,true);assert.equal(data.partidos.length,1);
- assert.equal(await rpc('macroliga_guardar_alineacion',[div,j,slots,0]),1);
- assert.equal(await rpc('macroliga_guardar_alineacion',[div,j,[p2,p1,...Array(9).fill(null)],1]),2);
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,slots,0]),/Formación inválida/);
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,[...lineas.GK,...lineas.DEF.slice(0,3),...lineas.MID.slice(0,4),...lineas.FWD.slice(0,2)],0]),/Formación inválida/);
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,[p1,...lineas.DEF.slice(0,2),...lineas.MID,...lineas.FWD],0]),/Formación inválida/);
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,[p1,...lineas.DEF,...lineas.MID],0]),/Formación inválida/);
+ let version=0;
+ for(const f of formaciones){
+   const seleccion=once(f);
+   assert.equal(await rpc('macroliga_guardar_alineacion',[div,j,seleccion,version]),++version);
+   assert.deepEqual((await rpc('macroliga_estado_alineacion',[div])).slots,seleccion);
+ }
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,once(formaciones[0]),0]),/ha cambiado/);
+
  await owner();await q("update public.fixtures set kickoff_at=now()-interval '1 second' where id=$1",[f]);
  await as(users[0]);assert.equal((await rpc('macroliga_estado_alineacion',[div])).editable,false);
- await denied(rpc('macroliga_guardar_alineacion',[div,j,slots,2]),/cerrada/);
+ await denied(rpc('macroliga_guardar_alineacion',[div,j,once(formaciones[0]),version]),/cerrada/);
  await as(users[3]);await denied(rpc('macroliga_guardar_alineacion',[foreign,j,slots,0]),/Jornada no disponible/);
  console.log('PASS borrador privado, once real, versión, propietario, división y bloqueo por primer partido');
  await owner();const cycle=await scalar("insert into public.market_cycles(division_id,opens_at,closes_at,publishes_at,status) values($1,now()-interval '1 hour',now()+interval '1 hour',now()+interval '2 hour','draft') returning id",[div]);
@@ -94,11 +116,11 @@ try{
  assert.equal(Number(await scalar('select count(*) from public.wallet_entries')),2);
  assert.equal(Number(await scalar('select count(*) from public.transfer_operations')),1);
  console.log('PASS puja/retirada, privacidad, bloqueo por ciclo y política, venta, doble aceptación idempotente y saldo contable');
- for(const name of ['20261126_operaciones_mercado_rollback.sql','20261126_alineacion_segura_rollback.sql'])await db.exec(await readFile(new URL('docs/propuestas/'+name,root),'utf8'));
+ for(const name of ['20261126_reglas_formacion_rollback.sql','20261126_operaciones_mercado_rollback.sql','20261126_alineacion_segura_rollback.sql'])await db.exec(await readFile(new URL('docs/propuestas/'+name,root),'utf8'));
  assert.equal(Number(await scalar('select count(*) from public.lineups')),1);
  assert.equal(Number(await scalar('select count(*) from app_private.lineup_drafts')),1);
  assert.equal(Number(await scalar('select count(*) from public.transfer_operations')),1);
- for(const name of names.slice(-2))await db.exec(await readFile(new URL(name,migrations),'utf8'));
+ for(const name of names.slice(-3))await db.exec(await readFile(new URL(name,migrations),'utf8'));
  console.log('PASS rollback sin borrar datos y reinstalación');
  const officialComp=await scalar("insert into public.competitions(code,name) values('MACROLIGA_PILOTO_INVIERNO_2026','Ficticio calendario') returning id");
  const officialSeason=await scalar("insert into public.seasons(competition_id,code,name) values($1,'2026_27','Ficticio') returning id",[officialComp]);
