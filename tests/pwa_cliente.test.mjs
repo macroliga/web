@@ -134,14 +134,14 @@ test('la recuperación automática usa refresh token y no vuelve a solicitar PIN
       calls.push({url,body:JSON.parse(options.body),headers:options.headers});
       return {ok:true,json:async()=>({
         access_token:'jwt-renovado',
-        refresh_token:'refresh-rotado-con-valor-aleatorio-de-prueba',
+        refresh_token:'fakeRefresh2',
         expires_in:3599
       })};
     }
   });
-  const renovado=await api.renovarSesion('refresh-original-de-mas-de-veinte-caracteres');
+  const renovado=await api.renovarSesion('fakeRefresh1');
   assert.equal(renovado.accessToken,'jwt-renovado');
-  assert.equal(renovado.refreshToken,'refresh-rotado-con-valor-aleatorio-de-prueba');
+  assert.equal(renovado.refreshToken,'fakeRefresh2');
   assert.equal(calls.length,1);
   assert.match(calls[0].url,/grant_type=refresh_token$/);
   assert.deepEqual(Object.keys(calls[0].body),['refresh_token']);
@@ -155,6 +155,27 @@ test('un refresh token inválido no genera un inicio de sesión artificial', asy
     anonKey:'sb_publishable_ficticia',
     fetchImpl:async()=>({ok:false,status:401,json:async()=>({error:'invalid_grant'})})
   });
-  await assert.rejects(api.renovarSesion('refresh-original-de-mas-de-veinte-caracteres'),
-    (err)=>err.status===401 && /credenciales/.test(err.message));
+  await assert.rejects(api.renovarSesion('fakeRefresh1'),
+    (err)=>err.status===401 && err.sesionRevocada === true && /credenciales/.test(err.message));
+});
+
+test('los errores no concluyentes no invalidan el acceso recordado', async () => {
+  for (const [status, code] of [[400,'unexpected_failure'], [401,'invalid_jwt'], [503,'unexpected_failure']]) {
+    const api = crearCliente({
+      supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co', anonKey:'sb_publishable_ficticia',
+      fetchImpl:async () => ({ok:false, status, json:async()=>({error_code:code})})
+    });
+    await assert.rejects(api.renovarSesion('fakeRefresh1'), err => err.sesionRevocada === false);
+    await assert.rejects(api.consultar('macroliga_mi_equipo', {}, 'jwt'), err => !err.sesionRevocada);
+  }
+});
+test('cerrar sesión revoca solo la sesión de este dispositivo', async () => {
+  const calls = [];
+  const api = crearCliente({
+    supabaseUrl:'https://xuwjbfnhvvbdargcohfe.supabase.co', anonKey:'sb_publishable_ficticia',
+    fetchImpl:async(url, options) => {calls.push({url,options}); return {ok:true,json:async()=>({})};}
+  });
+  await api.cerrarSesion('jwt');
+  assert.equal(new URL(calls[0].url).searchParams.get('scope'), 'local');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer jwt');
 });

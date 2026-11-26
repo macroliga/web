@@ -47,7 +47,7 @@ test('salir elimina sesion pero conserva nombre de entrenador', () => {
 test('no restaura sesiones de otro proyecto, alias invalidos ni datos corruptos', () => {
   const storage = almacen();
   assert.equal(guardarSesion(storage,'otro@example.invalid',REFRESH),false);
-  assert.equal(guardarSesion(storage,EMAIL,'corto'),false);
+  assert.equal(guardarSesion(storage,EMAIL,''),false);
   storage.setItem(SESION_KEY,'{"email":"otro@example.invalid","refreshToken":"'+REFRESH+'"}');
   assert.equal(sesionRecordada(storage),null);
   storage.setItem(SESION_KEY,'{json roto}');
@@ -61,4 +61,28 @@ test('almacenamiento no disponible no rompe el inicio ni el cierre de sesion', (
   assert.equal(guardarSesion(bad,EMAIL,REFRESH),false);
   assert.equal(sesionRecordada(bad),null);
   assert.doesNotThrow(() => olvidarSesion(bad));
+});
+
+test('acepta tokens opacos reales de 12 caracteres y conserva el alias', () => {
+  const storage = almacen();
+  assert.equal(guardarSesion(storage, EMAIL, 'fakeRefresh1'), true);
+  assert.deepEqual(sesionRecordada(storage), {email:EMAIL, refreshToken:'fakeRefresh1'});
+  assert.equal(guardarSesion(storage, EMAIL, ' '), false);
+  assert.equal(guardarSesion(storage, EMAIL, 'a'.repeat(8193)), false);
+  assert.equal(guardarSesion(null, EMAIL, 'fakeRefresh1'), false);
+  assert.equal(guardarSesion({setItem(){}, getItem(){return null}}, EMAIL, 'fakeRefresh1'), false);
+});
+
+test('migra la sesión anterior y protege frente a una pestaña con código antiguo', () => {
+  const storage = almacen();
+  const legacy = 'macroliga.piloto.sesion.v1';
+  storage.setItem(legacy, JSON.stringify({email:EMAIL,refreshToken:'fakeRefresh1'}));
+  assert.deepEqual(sesionRecordada(storage),{email:EMAIL,refreshToken:'fakeRefresh1'});
+  assert.equal(storage.getItem(legacy),null);
+  storage.removeItem(legacy); // La versión antigua no puede borrar la sesión v2.
+  assert.equal(sesionRecordada(storage).refreshToken,'fakeRefresh1');
+  storage.setItem(legacy, JSON.stringify({email:EMAIL,refreshToken:REFRESH}));
+  olvidarSesion(storage);
+  assert.equal(sesionRecordada(storage),null);
+  assert.equal(storage.getItem(legacy),null);
 });

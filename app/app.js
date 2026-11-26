@@ -1,9 +1,8 @@
-import { crearCliente } from './api.mjs';
-import { euros } from './logic.mjs';
-import { cuentasDemostracion } from './entrenadores.mjs';
-import { solicitarGuardadoPin } from './gestor-pin.mjs';
+import { crearCliente } from './api.mjs?v=10';
+import { euros } from './logic.mjs?v=10';
+import { cuentasDemostracion } from './entrenadores.mjs?v=10';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
-  sesionRecordada, olvidarSesion, SESION_KEY } from './session.mjs';
+  sesionRecordada, olvidarSesion, SESION_KEY } from './session.mjs?v=10';
 
 // El contenido privado permanece oculto hasta validar nombre + PIN en Supabase.
 const el = (id) => document.getElementById(id);
@@ -36,6 +35,13 @@ let token = null;
 let intento = 0;
 let venceEn = 0;
 let refrescando = false;
+let sesionActual = null;
+let ultimoToken = null;
+let persistente = false;
+const recovery = el('session-recovery');
+const retryButton = el('retry-session');
+const note = el('prototype-note');
+const NOTA_NORMAL = note.textContent;
 const storage = (() => { try { return window.localStorage; } catch { return null; } })();
 
 function aviso(texto) {
@@ -68,7 +74,7 @@ function borrarDatosPrivados() {
   }
   el('roster-list').replaceChildren();
 }
-function mostrarAcceso() {
+function mostrarAcceso(recuperando = false) {
   pin.value = '';
   token = null;
   venceEn = 0;
@@ -76,6 +82,9 @@ function mostrarAcceso() {
   topBalance.hidden = true;
   el('prototype-note').hidden = true;
   loginView.hidden = false;
+  loginForm.hidden = recuperando;
+  el('login-subtitle').hidden = recuperando;
+  recovery.hidden = !recuperando;
   borrarDatosPrivados();
 }
 function mostrarAplicacion() {
@@ -114,7 +123,7 @@ async function consultarEquipo(jwt) {
   return {equipo, jugadores};
 }
 function venceSesion(sesion) {
-  venceEn = Date.now() + Math.max(60, Number(sesion.expiresIn) || 3600) * 1000;
+  venceEn = Date.now() + (Number(sesion.expiresIn) || 3600) * 1000;
 }
 
 function pintarEquipo(equipo, jugadores) {
@@ -162,7 +171,7 @@ for (const boton of document.querySelectorAll('[data-view]')) {
 
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!cliente || token) return;
+  if (!cliente || token || loginButton.disabled) return;
   // Algunos navegadores rellenan el usuario automáticamente sin disparar
   // un evento: recuperamos el alias solo si pertenece a los 16 autorizados.
   if (aliasGestor.value !== entrenador.value &&
@@ -173,7 +182,6 @@ loginForm.addEventListener('submit', async (event) => {
   const cuenta = cuentas.find((c) => c.correo === entrenador.value);
   if (!cuenta) { aviso('Selecciona tu entrenador.'); return; }
   if (!/^\d{6}$/.test(pin.value)) { aviso('Introduce un PIN de seis cifras.'); return; }
-  const pinIntroducido = pin.value;
   const numeroIntento = ++intento;
   loginButton.disabled = true;
   aviso('Comprobando PIN…');
@@ -186,22 +194,17 @@ loginForm.addEventListener('submit', async (event) => {
       return;
     }
     token = nuevaSesion.accessToken;
+    ultimoToken = token;
     venceSesion(nuevaSesion);
+    sesionActual = {email: cuenta.correo, refreshToken: nuevaSesion.refreshToken};
     recordarEntrenador(storage, cuenta.correo);
-    // Solo se conserva el refresh token, nunca el PIN.
-    guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
+    // Solo conserva el token de renovación, nunca el PIN.
+    persistente = recordarPin.checked && guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
+    if (!recordarPin.checked) olvidarSesion(storage);
+    note.textContent = recordarPin.checked && !persistente
+      ? 'MACROLIGA · El dispositivo no permite recordar el acceso.'
+      : NOTA_NORMAL;
     pintarEquipo(equipo, jugadores);
-    if (recordarPin.checked) {
-      // Se solicita al gestor de contraseñas del dispositivo, nunca al
-      // almacenamiento local de MACROLIGA; puede pedir confirmación.
-      void solicitarGuardadoPin({
-        navegador: navigator,
-        PasswordCredentialCtor: window.PasswordCredential,
-        correo: cuenta.correo,
-        nombre: cuenta.entrenador,
-        pin: pinIntroducido
-      });
-    }
     mostrarAplicacion();
   } catch (error) {
     if (nuevaSesion?.accessToken) await cliente.cerrarSesion(nuevaSesion.accessToken);
@@ -214,92 +217,144 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-el('logout-button').addEventListener('click', () => {
-  const anterior = token;
+// El cierre local es inmediato; ninguna renovación en curso puede reabrirlo.
+function salir() {
+  const anterior = ultimoToken;
+  ultimoToken = null;
   ++intento;
-  // La acción Salir revoca el acceso local inmediatamente.
   olvidarSesion(storage);
+  persistente = false;
+  sesionActual = null;
   mostrarAcceso();
+  loginButton.disabled = false;
+  note.textContent = NOTA_NORMAL;
   aviso('Has salido. Tu entrenador sigue seleccionado por comodidad.');
   if (anterior && cliente) void cliente.cerrarSesion(anterior);
-});
+}
+el('logout-button').addEventListener('click', salir);
+el('forget-session').addEventListener('click', salir);
+retryButton.addEventListener('click', () => void restaurarSesion());
 
-async function restaurarSesion() {
-  const guardada = sesionRecordada(storage);
-  if (!cliente || !guardada) return;
-  const existe = cuentas.some((c) => c.correo === guardada.email);
-  if (!existe) { olvidarSesion(storage); return; }
-  const numeroIntento = ++intento;
-  loginButton.disabled = true;
-  aviso('Recuperando tu sesión…');
-  let renovada = null;
+// Las pestañas de la PWA pueden convivir. Renovamos el token más reciente
+// dentro de un bloqueo por origen, evitando rotaciones simultáneas.
+function conBloqueo(tarea) {
+  return navigator.locks?.request
+    ? navigator.locks.request('macroliga-piloto-renovacion', tarea)
+    : tarea();
+}
+function mismaSesion(a, b) {
+  return a?.email === b?.email && a?.refreshToken === b?.refreshToken;
+}
+async function recuperarSesion(validarEquipo) {
+  if (!cliente || refrescando) return;
+  const guardada = persistente ? sesionRecordada(storage) : sesionActual;
+  if (!guardada) return;
+  const numeroIntento = intento;
+  refrescando = true;
+  retryButton.disabled = true;
+  if (validarEquipo) {
+    mostrarAcceso(true);
+    aviso('Recuperando tu sesión…');
+  }
   try {
-    renovada = await cliente.renovarSesion(guardada.refreshToken);
-    // Los refresh tokens de Supabase rotan: persistir el nuevo antes
-    // de consultar el equipo para no reutilizar uno antiguo por accidente.
-    if (numeroIntento !== intento) return;
-    guardarSesion(storage, guardada.email, renovada.refreshToken);
-    const {equipo, jugadores} = await consultarEquipo(renovada.accessToken);
-    if (numeroIntento !== intento) return;
-    token = renovada.accessToken;
-    venceSesion(renovada);
-    entrenador.value = guardada.email;
-    recordarEntrenador(storage, guardada.email);
-    pintarEquipo(equipo, jugadores);
-    mostrarAplicacion();
+    await conBloqueo(async () => {
+      if (numeroIntento !== intento) return;
+      // Otra pestaña puede haber rotado el token mientras esperábamos.
+      const origen = persistente ? sesionRecordada(storage) : sesionActual;
+      if (!origen || origen.email !== guardada.email) return;
+      let renovada;
+      try {
+        renovada = await cliente.renovarSesion(origen.refreshToken);
+      } catch (error) {
+        if (numeroIntento !== intento) return;
+        // Nunca borrar una sesión que cambió mientras llegaba la respuesta.
+        if (persistente && !mismaSesion(sesionRecordada(storage), origen)) return;
+        // Resolver la revocación dentro del bloqueo, antes de que otra
+        // pestaña pueda iniciar una nueva rotación.
+        if (error.sesionRevocada) {
+          if (persistente) olvidarSesion(storage);
+          persistente = false;
+          sesionActual = null;
+          ultimoToken = null;
+          mostrarAcceso();
+          aviso('Tu sesión ha caducado. Introduce el PIN para volver a entrar.');
+          return;
+        }
+        throw error;
+      }
+      if (numeroIntento !== intento) return;
+      if (persistente && !mismaSesion(sesionRecordada(storage), origen)) return;
+      ultimoToken = renovada.accessToken;
+      sesionActual = {email: origen.email, refreshToken: renovada.refreshToken};
+      // Persistir la rotación ANTES de consultar las RPC.
+      if (persistente && !guardarSesion(storage, origen.email, renovada.refreshToken)) {
+        persistente = false;
+        note.textContent = 'MACROLIGA · El dispositivo no permite recordar el acceso.';
+      }
+      if (validarEquipo) {
+        const {equipo, jugadores} = await consultarEquipo(renovada.accessToken);
+        if (numeroIntento !== intento) return;
+        if (persistente && sesionRecordada(storage)?.email !== origen.email) return;
+        entrenador.value = origen.email;
+        aliasGestor.value = origen.email;
+        recordarEntrenador(storage, origen.email);
+        pintarEquipo(equipo, jugadores);
+      }
+      token = renovada.accessToken;
+      venceSesion(renovada);
+      if (validarEquipo) mostrarAplicacion();
+    });
   } catch (error) {
     if (numeroIntento !== intento) return;
-    if (error.status === 400 || error.status === 401) {
-      olvidarSesion(storage);
-      mostrarAcceso();
-      aviso('Tu sesión ha caducado. Introduce el PIN para volver a entrar.');
-    } else {
-      mostrarAcceso();
-      aviso('No se pudo recuperar tu sesión. Comprueba la conexión e inténtalo de nuevo.');
+    if (validarEquipo || Date.now() >= venceEn) {
+      mostrarAcceso(true);
+      aviso('No se pudo conectar. Tu acceso sigue guardado; vuelve a conectar.');
     }
+    // Un error temporal no borra el token de renovación ni pide el PIN.
   } finally {
-    if (numeroIntento === intento) loginButton.disabled = false;
+    refrescando = false;
+    retryButton.disabled = false;
   }
 }
 
-// El móvil puede suspender la PWA: al volver, renovar solo si queda poco
-// tiempo de validez. Nunca mostramos datos ajenos mientras recuperamos.
+async function restaurarSesion() {
+  if (!cliente || refrescando) return;
+  if (!sesionActual) {
+    sesionActual = sesionRecordada(storage);
+    persistente = !!sesionActual;
+  }
+  if (!sesionActual) return;
+  await recuperarSesion(true);
+}
 async function renovarSiCaduca() {
-  if (!cliente || !token || refrescando || Date.now() + 120000 < venceEn) return;
-  const guardada = sesionRecordada(storage);
-  if (!guardada) return;
-  const numeroIntento = intento;
-  const tokenAnterior = token;
-  refrescando = true;
-  try {
-    const renovada = await cliente.renovarSesion(guardada.refreshToken);
-    if (numeroIntento !== intento || token !== tokenAnterior) return;
-    guardarSesion(storage, guardada.email, renovada.refreshToken);
-    token = renovada.accessToken;
-    venceSesion(renovada);
-  } catch (error) {
-    if (numeroIntento !== intento) return;
-    if (error.status === 400 || error.status === 401) {
-      olvidarSesion(storage);
-      mostrarAcceso();
-      aviso('La sesión ha caducado. Introduce tu PIN para volver a entrar.');
-    }
-  } finally {
-    refrescando = false;
+  if (!cliente || refrescando || document.hidden || !sesionActual) return;
+  if (!token) {
+    if (!recovery.hidden) await restaurarSesion();
+  } else if (Date.now() + 120000 >= venceEn) {
+    await recuperarSesion(false);
   }
 }
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) void renovarSiCaduca();
 });
+window.addEventListener('online', () => void renovarSiCaduca());
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) void renovarSiCaduca();
+});
+setInterval(() => { if (token) void renovarSiCaduca(); }, 60000);
 window.addEventListener('storage', (event) => {
-  // Si el usuario cierra sesión en otra pestaña del mismo navegador,
-  // se ocultan también aquí sus datos privados.
-  if (event.key === SESION_KEY && event.newValue === null && token) {
+  if (event.key !== SESION_KEY && event.key !== null) return;
+  if (!persistente) return;
+  const reciente = sesionRecordada(storage);
+  if (!reciente || reciente.email !== sesionActual?.email) {
     ++intento;
-    const anterior = token;
+    persistente = false;
+    sesionActual = null;
+    ultimoToken = null;
     mostrarAcceso();
-    aviso('Has salido en otra ventana.');
-    if (cliente) void cliente.cerrarSesion(anterior);
+    aviso('La sesión ha cambiado en otra ventana. Vuelve a entrar.');
+    // No cerrar sesión en el servidor desde esta pestaña: la otra ya
+    // gestionó su cierre y puede estar iniciando una sesión nueva.
   }
 });
 
@@ -316,5 +371,5 @@ try {
 mostrarAcceso();
 if (cliente) void restaurarSesion();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).catch(() => {});
 }

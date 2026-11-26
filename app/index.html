@@ -31,7 +31,7 @@
       <section id="login-view" class="login-view" aria-labelledby="login-title">
         <div class="login-mark" aria-hidden="true">🏆</div>
         <h2 id="login-title">¿Quién juega?</h2>
-        <p class="login-subtitle">Elige tu entrenador y escribe su PIN para entrar.</p>
+        <p class="login-subtitle" id="login-subtitle">Elige tu entrenador y escribe su PIN para entrar.</p>
         <form id="login-form" class="login-form">
           <label for="manager-select">Tu entrenador</label>
           <select id="manager-select" name="entrenador" required>
@@ -46,10 +46,14 @@
             placeholder="••••••" required>
           <label class="remember-pin" for="remember-pin">
             <input id="remember-pin" type="checkbox" checked>
-            <span>Guardar mi PIN en el gestor de contraseñas del móvil</span>
+            <span>Recordar mi acceso en este dispositivo</span>
           </label>
           <button type="submit" id="login-button" class="primary-button">Entrar en MACROLIGA</button>
         </form>
+        <div id="session-recovery" hidden>
+          <button type="button" id="retry-session" class="primary-button">Volver a conectar</button>
+          <button type="button" id="forget-session">Salir y cambiar de entrenador</button>
+        </div>
         <p id="login-message" class="login-message" role="status" aria-live="polite">
           Identificación necesaria para consultar tu equipo.
         </p>
@@ -140,6 +144,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=9"></script>
+  <script type="module" src="./app.js?v=10"></script>
 </body>
 </html>

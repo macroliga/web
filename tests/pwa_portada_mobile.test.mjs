@@ -39,7 +39,7 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v7/);
+  assert.match(worker, /macroliga-pwa-estatica-v10/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);
@@ -50,7 +50,7 @@ test('botón Salir discreto fuera de Mi equipo y sesión recuperable', () => {
   assert.match(html, /id="logout-button"[^>]+class="logout-mini"/);
   assert.match(styles, /\.logout-mini\{position:fixed/);
   assert.match(app, /async function restaurarSesion\(\)/);
-  assert.match(app, /cliente\.renovarSesion\(guardada\.refreshToken\)/);
+  assert.match(app, /cliente\.renovarSesion\(origen\.refreshToken\)/);
   assert.match(app, /guardarSesion\(storage, cuenta\.correo, nuevaSesion\.refreshToken\)/);
   assert.match(app, /olvidarSesion\(storage\)/);
   assert.match(app, /recordarEntrenador\(storage, cuenta\.correo\)/);
@@ -68,15 +68,15 @@ test('la política CSP permite solo scripts propios y API propia de MACROLIGA', 
   assert.match(html, /Content-Security-Policy/);
   assert.match(html, /script-src 'self'/);
   assert.match(html, /connect-src 'self' https:\/\/xuwjbfnhvvbdargcohfe\.supabase\.co/);
-  assert.match(worker, /'\.\/session\.mjs'/);
+  assert.match(worker, /'\.\/session\.mjs\?v=10'/);
 });
 
-test('PIN compatible con gestor de contraseñas y opción explícita', () => {
+test('PIN compatible con autocompletado y opción explícita de recordar sesión', () => {
   assert.match(html, /id="login-username"[^>]+autocomplete="username"/);
   assert.match(html, /id="password"[^>]+autocomplete="current-password"/);
   assert.match(html, /id="remember-pin" type="checkbox" checked/);
-  assert.match(html, /Guardar mi PIN en el gestor de contraseñas/);
-  assert.match(app, /solicitarGuardadoPin\(/);
-  assert.match(app, /if \(recordarPin.checked\)/);
-  assert.match(worker, /'\.\/gestor-pin\.mjs'/);
+  assert.match(html, /Recordar mi acceso en este dispositivo/);
+  assert.doesNotMatch(app, /solicitarGuardadoPin\(/);
+  assert.match(app, /recordarPin.checked && guardarSesion/);
+  assert.match(html, /id="session-recovery" hidden/);
 });

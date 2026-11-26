@@ -1,10 +1,11 @@
-// MACROLIGA - recursos publicos, NUNCA sesiones, tokens, API ni claves.
-// Cache static-only, versionado para actualizar PWA tras cada entrega.
-const CACHE = 'macroliga-pwa-estatica-v9';
-const STATIC = ['./index.html','./styles.css','./app.js','./api.mjs',
-  './logic.mjs','./entrenadores.mjs','./session.mjs','./gestor-pin.mjs','./icon.svg'];
+// MACROLIGA - recursos públicos, NUNCA sesiones, tokens, API ni claves.
+const CACHE = 'macroliga-pwa-estatica-v10';
+const STATIC = ['./index.html','./styles.css?v=7','./app.js?v=10','./api.mjs?v=10',
+  './logic.mjs?v=10','./entrenadores.mjs?v=10','./session.mjs?v=10','./icon.svg','./manifest.webmanifest'];
+const urlRecurso = (item) => new URL(item, self.registration.scope).href;
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC))
+  event.waitUntil(caches.open(CACHE).then((cache) =>
+    cache.addAll(STATIC.map((item) => new Request(urlRecurso(item), {cache:'reload'}))))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (event) => {
@@ -19,10 +20,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin ||
       url.pathname.endsWith('/config.js')) return;
-  // Solo cachea la lista explicita de recursos estaticos; cualquier otra
-  // ruta se deja sin interceptar para evitar almacenar datos privados.
-  const allowed = STATIC.some((item) =>
-    new URL(item, self.registration.scope).pathname === url.pathname);
+  // Solo recursos exactos; no mezclar módulos de entregas diferentes.
+  const navegacion = request.mode === 'navigate' &&
+    [urlRecurso('./'), urlRecurso('./index.html')].includes(url.origin + url.pathname);
+  const allowed = navegacion || STATIC.some((item) => urlRecurso(item) === url.href);
   if (!allowed) return;
-  event.respondWith(fetch(request).catch(() => caches.match(request, {ignoreSearch:true})));
+  event.respondWith(fetch(request, {cache:'no-cache'}).catch(async () => {
+    const cache = await caches.open(CACHE);
+    return await cache.match(navegacion ? urlRecurso('./index.html') : request)
+      || Response.error();
+  }));
 });

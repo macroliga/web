@@ -1,9 +1,11 @@
 // Cliente publico de SOLO autenticacion y RPC de lectura.
 // Nunca se usa la clave service_role. La identidad se valida en Supabase.
+import { refreshValido } from './session.mjs?v=10';
+
 const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo']);
 
 function extraerSesion(data) {
-  if (!data?.access_token || !data?.refresh_token) {
+  if (!data?.access_token || !refreshValido(data?.refresh_token)) {
     throw new Error('Supabase no ha devuelto una sesión renovable.');
   }
   return {
@@ -36,6 +38,7 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
         ? 'No se pudo completar el acceso. Comprueba las credenciales.'
         : 'La consulta no se pudo completar (' + response.status + ').');
       error.status = response.status;
+      error.code = data?.error_code || data?.code || data?.error;
       throw error;
     }
     return data;
@@ -56,12 +59,22 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
       return extraerSesion(data);
     },
     async renovarSesion(refreshToken) {
-      if (typeof refreshToken !== 'string' || refreshToken.length < 20) {
+      if (!refreshValido(refreshToken)) {
         throw new Error('No hay sesión para recuperar.');
       }
-      const data = await solicitar('/auth/v1/token?grant_type=refresh_token',
-        { refresh_token: refreshToken }, null);
-      return extraerSesion(data);
+      try {
+        const data = await solicitar('/auth/v1/token?grant_type=refresh_token',
+          { refresh_token: refreshToken }, null);
+        return extraerSesion(data);
+      } catch (error) {
+        // No confundir problemas de red, configuración o RPC con revocación.
+        error.sesionRevocada = (error.status === 400 || error.status === 401 ||
+          error.status === 403 || error.status === 404) && [
+          'refresh_token_not_found', 'refresh_token_already_used', 'session_not_found',
+          'session_expired', 'user_not_found', 'user_banned', 'invalid_grant'
+        ].includes(error.code);
+        throw error;
+      }
     },
     async consultar(nombre, parametros, token) {
       if (!LECTURAS.has(nombre)) throw new Error('Operacion no permitida por el cliente');
@@ -70,7 +83,7 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
     },
     async cerrarSesion(token) {
       if (!token) return;
-      try { await solicitar('/auth/v1/logout', {}, token); } catch { /* se borra sesion local */ }
+      try { await solicitar('/auth/v1/logout?scope=local', {}, token); } catch { /* se borra sesion local */ }
     }
   };
 }

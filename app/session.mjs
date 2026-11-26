@@ -3,13 +3,16 @@
 // volver a autenticar; solo se guarda en el dispositivo del usuario.
 // En un dispositivo compartido se debe pulsar «Salir».
 export const NOMBRE_KEY = 'macroliga.piloto.nombre.v1';
-export const SESION_KEY = 'macroliga.piloto.sesion.v1';
+// La v1 rechazaba los tokens de 12 caracteres y podía borrarlos desde
+// una pestaña antigua de la PWA. La v2 aísla la sesión corregida.
+export const SESION_KEY = 'macroliga.piloto.sesion.v2';
+const SESION_ANTERIOR_KEY = 'macroliga.piloto.sesion.v1';
 
 function obtener(storage, clave) {
   try { return storage?.getItem(clave) ?? null; } catch { return null; }
 }
 function guardar(storage, clave, valor) {
-  try { storage?.setItem(clave, valor); return true; } catch { return false; }
+  try { if (!storage) return false; storage.setItem(clave, valor); return storage.getItem(clave) === valor; } catch { return false; }
 }
 function quitar(storage, clave) {
   try { storage?.removeItem(clave); } catch { /* Almacenamiento deshabilitado */ }
@@ -26,30 +29,37 @@ export function entrenadorRecordado(storage) {
   const email = obtener(storage, NOMBRE_KEY);
   return correoValido(email) ? email : null;
 }
+// El token es opaco: Supabase emite tokens de 12 caracteres, entre otros.
+export function refreshValido(token) {
+  return typeof token === 'string' && token.length > 0 && token.length <= 8192 && !/\s/.test(token);
+}
 export function guardarSesion(storage, email, refreshToken) {
-  if (!correoValido(email) || typeof refreshToken !== 'string' ||
-      refreshToken.length < 20 || refreshToken.length > 8192) return false;
+  if (!correoValido(email) || !refreshValido(refreshToken)) return false;
   return guardar(storage, SESION_KEY, JSON.stringify({
     email, refreshToken
   }));
 }
 export function sesionRecordada(storage) {
-  const raw = obtener(storage, SESION_KEY);
+  const actual = obtener(storage, SESION_KEY);
+  const raw = actual ?? obtener(storage, SESION_ANTERIOR_KEY);
   if (!raw) return null;
   try {
     const data = JSON.parse(raw);
     if (!correoValido(data?.email) ||
-        typeof data?.refreshToken !== 'string' ||
-        data.refreshToken.length < 20 || data.refreshToken.length > 8192) {
-      quitar(storage, SESION_KEY);
+        !refreshValido(data?.refreshToken)) {
+      olvidarSesion(storage);
       return null;
+    }
+    if (actual === null && guardarSesion(storage, data.email, data.refreshToken)) {
+      quitar(storage, SESION_ANTERIOR_KEY);
     }
     return {email: data.email, refreshToken: data.refreshToken};
   } catch {
-    quitar(storage, SESION_KEY);
+    olvidarSesion(storage);
     return null;
   }
 }
 export function olvidarSesion(storage) {
   quitar(storage, SESION_KEY);
+  quitar(storage, SESION_ANTERIOR_KEY);
 }
