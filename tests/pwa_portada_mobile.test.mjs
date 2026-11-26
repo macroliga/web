@@ -35,8 +35,9 @@ test('cuatro accesos principales en 2 columnas y barra inferior de cinco', () =>
   assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(html, /id="admin-nav" hidden/);
   assert.match(app, /mostrarAdmin\(true\)/);
-  assert.match(html, /id="admin-home"[^>]+hidden/);
-  assert.match(html, /id="home-manager-count"/);
+  assert.doesNotMatch(html, /league-status-card|id="admin-home"|id="home-manager-count"/);
+  assert.match(html, /id="admin-state"/);
+  assert.doesNotMatch(app, /actualizarResumenLiga|adminHome/);
   assert.match(html, /id="app-refresh"/);
   assert.match(styles, /env\(safe-area-inset-bottom/);
 });
@@ -46,7 +47,7 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v18/);
+  assert.match(worker, /macroliga-pwa-estatica-v19/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);

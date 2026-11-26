@@ -125,8 +125,8 @@ def run(source):
             def do_GET(self):
                 # HTML obsoleto en primera navegación, módulo actual; el
                 # parámetro de versión devuelve el HTML vigente.
-                if self.path.startswith('/app/?stale=1') and 'release=18' not in self.path:
-                    old=(web/'app/index.html').read_text().replace('data-release="18"','data-release="17"').replace('app.js?v=18','app.js?v=17')
+                if self.path.startswith('/app/?stale=1') and 'release=19' not in self.path:
+                    old=(web/'app/index.html').read_text().replace('data-release="19"','data-release="18"').replace('app.js?v=19','app.js?v=18')
                     body=old.encode()
                     self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
                     return
@@ -165,16 +165,14 @@ def run(source):
                 page.goto(url)
                 login(page)
                 assert_saved(page)
-                expect(page.locator('#home-manager-count')).to_have_text('16')
-                expect(page.locator('#home-catalog-state')).to_have_text('Pendiente')
-                expect(page.locator('#home-market-count')).to_have_text('0/15')
-                expect(page.locator('#home-league-status')).to_contain_text('Todavía no se ha cargado')
-                expect(page.locator('#admin-home')).to_be_hidden()
+                expect(page.locator('#home-view .league-status-card')).to_have_count(0)
+                expect(page.locator('#home-view .features .tile')).to_have_count(4)
+                expect(page.locator('#admin-nav')).to_be_hidden()
                 auth.empty=False
                 page.evaluate("window.dispatchEvent(new Event('online'))")
-                expect(page.locator('#home-catalog-state')).to_have_text('Disponible')
-                expect(page.locator('#home-market-count')).to_have_text('15/15')
-                print('PASS Inicio muestra datos reales recibidos, liga vacía y catálogo disponible',flush=True)
+                expect(page.locator('#home-view .league-status-card')).to_have_count(0)
+                private(page)
+                print('PASS Inicio sin estado duplicado, accesos y sesión intactos',flush=True)
                 page.locator('[data-view="market"]').first.click()
                 expect(page.locator('#market-current-list li')).to_have_count(15)
                 expect(page.locator('#market-current-status')).to_contain_text('2 POR · 5 DEF · 5 MED · 3 DEL')
@@ -214,8 +212,9 @@ def run(source):
                 auth.admin_allowed=True
                 page.evaluate("window.dispatchEvent(new Event('online'))")
                 expect(page.locator('#admin-nav')).to_be_visible()
-                expect(page.locator('#admin-home')).to_be_visible()
-                page.click('#admin-home')
+                expect(page.locator('#admin-home')).to_have_count(0)
+                page.click('#admin-nav')
+                expect(page.locator('#admin-state')).to_contain_text('16 equipos')
                 expect(page.locator('#admin-form-submit')).to_contain_text('Cargar, repartir')
                 lot={'catalogo':{'kind':'authorized','permissionRef':'ficticia local','players':[{'externalId':'ficticio','active':True}]},
                      'puntos':[{'externalId':'ficticio','points':0}]}
@@ -238,8 +237,8 @@ def run(source):
                 page.evaluate('navigator.serviceWorker.ready')
                 page.wait_for_function('navigator.serviceWorker.controller !== null')
                 cache_keys=page.evaluate('caches.keys()')
-                assert cache_keys == ['macroliga-pwa-estatica-v18'], cache_keys
-                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v18").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
+                assert cache_keys == ['macroliga-pwa-estatica-v19'], cache_keys
+                cached_urls=page.evaluate('caches.open("macroliga-pwa-estatica-v19").then(c=>c.keys()).then(k=>k.map(r=>r.url))')
                 assert all('/config.js' not in u and 'supabase.co' not in u for u in cached_urls)
                 assert any('/session.mjs?v=10' in u for u in cached_urls)
                 print('PASS acceso único, navegación móvil y caché sin credenciales', flush=True)
@@ -265,12 +264,12 @@ def run(source):
                 calls=auth.password_calls
                 page.click('#app-refresh')
                 private(page)
-                assert auth.password_calls==calls and 'release=18' in page.url
+                assert auth.password_calls==calls and 'release=19' in page.url
                 assert_saved(page)
-                print('PASS actualización manual v18 conserva acceso y sesión',flush=True)
+                print('PASS actualización manual v19 conserva acceso y sesión',flush=True)
                 before_refresh=auth.refresh_calls
                 page.goto(url+'?stale=1',wait_until='domcontentloaded')
-                page.wait_for_url('**release=18')
+                page.wait_for_url('**release=19')
                 private(page)
                 assert auth.password_calls==calls and auth.refresh_calls==before_refresh+1
                 assert_saved(page)

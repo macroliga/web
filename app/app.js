@@ -23,7 +23,6 @@ const homeView = el('home-view');
 const sectionView = el('section-view');
 const topBalance = el('top-balance');
 const adminNav = el('admin-nav');
-const adminHome = el('admin-home');
 const nav = document.querySelector('.bottom-nav');
 
 const SECCIONES = Object.freeze({
@@ -46,7 +45,7 @@ let refrescando = false;
 let sesionActual = null;
 let ultimoToken = null;
 let persistente = false;
-let equipoRevision = 0, adminRevision = 0, ligaRevision = 0, adminAutorizado = false;
+let equipoRevision = 0, adminRevision = 0, adminAutorizado = false;
 let vistaActual = 'home';
 const recovery = el('session-recovery');
 const retryButton = el('retry-session');
@@ -56,7 +55,7 @@ const storage = (() => { try { return window.localStorage; } catch { return null
 
 const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
-const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();void actualizarResumenLiga();});
+const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();});
 
 function aviso(texto) {
   loginMessage.textContent = texto;
@@ -90,17 +89,15 @@ function cambiarVista(nombre) {
   if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();
   if (nombre === 'standings') void panelClasificacion?.show(); else panelClasificacion?.clear();
   if (nombre==='team'||nombre==='home') void actualizarEquipo();
-  if (nombre==='home') void actualizarResumenLiga();
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;ligaRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
+  divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
-    'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity','home-manager-count','home-catalog-state','home-market-count']) {
+    'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity']) {
     if(el(id))el(id).textContent = '—';
   }
   el('roster-list').replaceChildren();
-  if(el('home-league-status'))el('home-league-status').textContent='';
   if(el('team-refresh-status'))el('team-refresh-status').textContent='';
 }
 function mostrarAcceso(recuperando = false) {
@@ -190,29 +187,7 @@ async function actualizarEquipo(){
 function mostrarAdmin(autorizado){
   adminAutorizado=autorizado;
   if(adminNav)adminNav.hidden=!autorizado;
-  if(adminHome)adminHome.hidden=!autorizado;
   nav?.classList.toggle('has-admin',autorizado);
-}
-async function actualizarResumenLiga(){
-  const managerCount=el('home-manager-count'),catalog=el('home-catalog-state'),market=el('home-market-count'),status=el('home-league-status');
-  if(!managerCount||!catalog||!market||!status||!token||!divisionActual||!identidadActual)return;
-  const revision=++ligaRevision,sesion=intento,division=divisionActual,identity=identidadActual,jwt=token;
-  const valid=()=>revision===ligaRevision&&sesion===intento&&division===divisionActual&&identity===identidadActual&&Boolean(token);
-  status.textContent='Consultando datos de tu división…';
-  const [standings,players,lots]=await Promise.allSettled([
-    cliente.consultar('macroliga_clasificacion',{p_division_id:division},jwt),
-    cliente.consultar('macroliga_catalogo_division',{p_division_id:division,p_despues:null,p_limite:1},jwt),
-    cliente.consultar('macroliga_mercado_visible',{p_division_id:division},jwt)
-  ]);
-  if(!valid())return;
-  const rows=r=>r.status==='fulfilled'&&Array.isArray(r.value)?r.value:null;
-  const managers=rows(standings),catalogRows=rows(players),marketRows=rows(lots);
-  managerCount.textContent=managers?String(managers.length):'—';
-  catalog.textContent=catalogRows?(catalogRows.length?'Disponible':'Pendiente'):'—';
-  market.textContent=marketRows?marketRows.length+'/15':'—';
-  if(catalogRows&&catalogRows.length===0)status.textContent=(managers?'Los managers ya están inscritos. ':'')+'Todavía no se ha cargado el catálogo ni repartido las plantillas.';
-  else if(managers&&catalogRows&&marketRows)status.textContent='Consulta la clasificación y los futbolistas. Las pujas solo estarán disponibles cuando se active el mercado.';
-  else status.textContent='No se pudieron actualizar todas las consultas. Puedes volver a Inicio para reintentar sin introducir el PIN.';
 }
 async function comprobarAdmin(){
   if(!token||!divisionActual||!identidadActual)return;
@@ -426,7 +401,7 @@ async function renovarSiCaduca() {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) void renovarSiCaduca();
 });
-window.addEventListener('online', () => {void renovarSiCaduca();if(token){void actualizarEquipo();void comprobarAdmin();if(vistaActual==='home')void actualizarResumenLiga();}});
+window.addEventListener('online', () => {void renovarSiCaduca();if(token){void actualizarEquipo();void comprobarAdmin();}});
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) void renovarSiCaduca();
 });
@@ -460,14 +435,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='18')return false;
-  url.searchParams.set('release','18');
+  if(!manual&&url.searchParams.get('release')==='19')return false;
+  url.searchParams.set('release','19');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='18'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='19'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.
