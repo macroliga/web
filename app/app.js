@@ -1,4 +1,5 @@
-import { crearCliente } from './api.mjs?v=11';
+import { crearCliente } from './api.mjs?v=12';
+import { crearPanelCatalogo } from './catalogo.mjs?v=12';
 import { crearPanelAdmin } from './admin.mjs?v=11';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
@@ -47,6 +48,7 @@ const note = el('prototype-note');
 const NOTA_NORMAL = note.textContent;
 const storage = (() => { try { return window.localStorage; } catch { return null; } })();
 
+const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 
 function aviso(texto) {
@@ -75,10 +77,11 @@ function cambiarVista(nombre) {
     placeholder.hidden = nombre === 'admin';
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
+  if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  divisionActual = null; identidadActual = null; panelAdmin?.clear();
+  divisionActual = null; identidadActual = null; panelAdmin?.clear(); panelCatalogo?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-players','team-capacity']) {
     el(id).textContent = '—';

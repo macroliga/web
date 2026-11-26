@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=8">
+  <link rel="stylesheet" href="./styles.css?v=9">
 </head>
 <body>
   <div class="shell">
@@ -128,6 +128,16 @@
             <p id="section-message">Estamos preparando esta parte del piloto.</p>
             <span class="status-text">Todavía no hay operaciones disponibles</span>
           </div>
+          <div id="market-catalog" class="detail-card catalog-panel" hidden>
+            <h2>Todos los jugadores</h2>
+            <p>Consulta de tu división. Computer, Equipo Malo y plantillas de los equipos.</p>
+            <label for="catalog-search">Buscar jugador, club o propietario</label>
+            <input id="catalog-search" type="search" placeholder="Nombre, club o equipo">
+            <label for="catalog-owner">Propietario</label>
+            <select id="catalog-owner"><option value="all">Todos</option><option value="computer">Computer</option><option value="team">Equipos de usuarios</option><option value="bad_team">Equipo Malo</option></select>
+            <p id="catalog-status" role="status"></p>
+            <ul id="catalog-list" aria-label="Jugadores" aria-live="polite"></ul>
+          </div>
           <div id="admin-panel" class="detail-card admin-panel" hidden>
             <h2>Arranque de la división</h2>
             <p id="admin-state"></p><p id="admin-message" role="status"></p>
@@ -179,6 +189,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=11"></script>
+  <script type="module" src="./app.js?v=12"></script>
 </body>
 </html>

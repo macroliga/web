@@ -1,14 +1,7 @@
 -- PROPUESTA, NO DESPLEGADA. Alternativa al arranque combinado anterior.
 -- Exclusivamente macroliga-piloto. Catálogo global inicial, reparto por división.
+-- Requiere la migración 202611260004_catalogo_comuniazo_privado.sql.
 begin;
-create table app_private.admin_catalogo_inicial (
-  singleton boolean primary key default true check(singleton),
-  import_run_id uuid not null references public.sport_import_runs(id),
-  season_id uuid not null references public.seasons(id),
-  digest text not null,
-  source jsonb not null,
-  actor uuid not null references public.managers(id)
-);
 create table app_private.admin_repartos (
   id uuid primary key default gen_random_uuid(),
   division_id uuid not null references public.divisions(id),
@@ -18,9 +11,8 @@ create table app_private.admin_repartos (
   expires_at timestamptz not null default (now()+interval '30 minutes'),
   applied jsonb
 );
-alter table app_private.admin_catalogo_inicial enable row level security;
 alter table app_private.admin_repartos enable row level security;
-revoke all on app_private.admin_catalogo_inicial,app_private.admin_repartos from public,anon,authenticated,service_role,macroliga_runner;
+revoke all on app_private.admin_repartos from public,anon,authenticated,service_role,macroliga_runner;
 
 create function app_private.admin_exigir(p_division uuid) returns uuid
 language plpgsql security invoker set search_path='' as $$
@@ -54,7 +46,7 @@ language sql stable security invoker set search_path='' as $$
       from public.divisions d join public.seasons s on s.id=d.season_id where d.id=p_division),
    (select jsonb_agg(jsonb_build_array(id,team_name,status,balance_cents) order by id) from public.teams where division_id=p_division),
    (select jsonb_agg(jsonb_build_array(id,position,active,current_market_value_cents,name,club_id) order by id) from public.players),
-   (select digest from app_private.admin_catalogo_inicial)
+   (select digest from app_private.catalogo_comuniazo_runs order by sport_day desc limit 1)
  )::text,'UTF8')),'hex');
 $$;
 
@@ -63,7 +55,7 @@ language plpgsql security definer set search_path='' as $$
 begin
   perform app_private.admin_exigir(p_division);
   return (select jsonb_build_object('teamCount',(select count(*) from public.teams where division_id=p_division),
-    'catalogCount',(select count(*) from public.players),'catalogReady',exists(select 1 from app_private.admin_catalogo_inicial where season_id=s.id),
+    'catalogCount',(select count(*) from public.players),'catalogReady',exists(select 1 from app_private.catalogo_comuniazo_runs where season_id=s.id),
     'wealthCents',s.initial_wealth_cents::text,'maxRoster',d.max_roster,'season',s.code,'seasonStatus',s.status,
     'initialized',exists(select 1 from public.roster_ownership where division_id=p_division),
     'marketPrepared',exists(select 1 from public.market_cycles where division_id=p_division))
@@ -72,70 +64,12 @@ end; $$;
 
 create function public.macroliga_admin_importar_catalogo(p_division uuid,p_catalogo jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare
- v_actor uuid; v_season uuid; v_season_code text; v_comp text; v_provider text; v_digest text;
- v_n int; v_run uuid; v_player uuid; v_club uuid; v_p jsonb; v_value bigint;
- v_previous app_private.admin_catalogo_inicial%rowtype;
+declare v_actor uuid; v_season uuid;
 begin
  v_actor:=app_private.admin_exigir(p_division);
- select s.id,s.code,c.code into strict v_season,v_season_code,v_comp
- from public.divisions d join public.seasons s on s.id=d.season_id join public.competitions c on c.id=s.competition_id
- where d.id=p_division and s.status='draft' for update of d,s;
- lock table public.players in share row exclusive mode;
- if jsonb_typeof(p_catalogo) is distinct from 'object'
-  or p_catalogo->>'schemaVersion' is distinct from '1' or p_catalogo->>'kind' is distinct from 'authorized'
-  or p_catalogo->>'currency' is distinct from 'EUR' or p_catalogo->>'season' is distinct from v_season_code
-  or v_comp is distinct from 'MACROLIGA_PILOTO_INVIERNO_2026'
-  or upper(p_catalogo->>'competition') is distinct from 'LALIGA'
-  or nullif(btrim(p_catalogo->>'permissionRef'),'') is null or length(p_catalogo->>'permissionRef')>500
-  or not coalesce(p_catalogo->>'snapshotHash' ~ '^[a-f0-9]{64}$',false)
-  or not coalesce(p_catalogo->>'asOf' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$',false)
-  or jsonb_typeof(p_catalogo->'players') is distinct from 'array' then raise exception 'Catálogo no autorizado o incompatible'; end if;
- v_n:=jsonb_array_length(p_catalogo->'players');
- if v_n not between 1 and 20000 then raise exception 'Tamaño de catálogo incorrecto'; end if;
- if exists(select 1 from jsonb_object_keys(p_catalogo) k where k not in
-   ('schemaVersion','kind','provider','competition','season','currency','asOf','permissionRef','players','snapshotHash'))
-   then raise exception 'Campos de catálogo no admitidos';end if;
- v_provider:=p_catalogo->>'provider';
- if nullif(btrim(v_provider),'') is null or length(v_provider)>100 then raise exception 'Proveedor inválido'; end if;
- v_digest:=encode(sha256(convert_to(p_catalogo::text,'UTF8')),'hex');
- select * into v_previous from app_private.admin_catalogo_inicial;
- if found then
-   if v_previous.digest=v_digest and v_previous.season_id=v_season then
-     return jsonb_build_object('catalogCount',v_n,'importRunId',v_previous.import_run_id);
-   end if;
-   raise exception 'Catálogo ya cargado; no se puede sobrescribir desde el arranque';
- end if;
- if exists(select 1 from public.players) or exists(select 1 from public.football_clubs)
-  or exists(select 1 from public.sport_import_runs) then raise exception 'El catálogo global no está vacío'; end if;
- -- El indicador de autorización es declaración del operador, no una licencia validada.
- -- Antes del despliegue debe existir una fuente realmente autorizada.
- insert into public.sport_import_runs(provider,kind,status,finished_at,item_count)
- values(v_provider,'players','completed',now(),v_n) returning id into v_run;
- for v_p in select value from jsonb_array_elements(p_catalogo->'players') loop
-   if jsonb_typeof(v_p) is distinct from 'object'
-     or exists(select 1 from jsonb_object_keys(v_p) k where k not in ('externalId','name','club','position','active','marketValueCents'))
-     or nullif(btrim(v_p->>'externalId'),'') is null or length(v_p->>'externalId')>150
-     or nullif(btrim(v_p->>'name'),'') is null or length(v_p->>'name')>200
-     or nullif(btrim(v_p->>'club'),'') is null or length(v_p->>'club')>200
-     or not coalesce(v_p->>'position' in ('GK','DEF','MID','FWD'),false)
-     or jsonb_typeof(v_p->'active') is distinct from 'boolean'
-     or not coalesce(v_p->>'marketValueCents' ~ '^(0|[1-9][0-9]{0,18})$',false)
-     then raise exception 'Fila de futbolista inválida'; end if;
-   v_value:=(v_p->>'marketValueCents')::bigint;
-   insert into public.football_clubs(name) values(v_p->>'club') on conflict(name) do nothing;
-   select id into strict v_club from public.football_clubs where name=v_p->>'club';
-   insert into public.players(name,position,club_id,current_market_value_cents,active)
-     values(v_p->>'name',v_p->>'position',v_club,v_value,(v_p->>'active')::boolean) returning id into v_player;
-   insert into public.provider_player_ids(provider,external_id,player_id) values(v_provider,v_p->>'externalId',v_player);
-   insert into public.player_market_values(player_id,import_run_id,valued_at,amount_cents)
-     values(v_player,v_run,(p_catalogo->>'asOf')::timestamptz,v_value);
- end loop;
- insert into app_private.admin_catalogo_inicial(import_run_id,season_id,digest,source,actor)
- values(v_run,v_season,v_digest,p_catalogo-'players',v_actor);
- insert into public.admin_audit(actor_manager_id,action,target_type,target_id,reason,after_data)
- values(v_actor,'initial_catalog','division',p_division,'Carga de catálogo autorizado',jsonb_build_object('importRunId',v_run,'players',v_n,'digest',v_digest));
- return jsonb_build_object('catalogCount',v_n,'importRunId',v_run);
+ select season_id into strict v_season from public.divisions where id=p_division;
+ -- Mismo núcleo de propietario que las descargas. No hay dos rutas de escritura.
+ return app_private.importar_catalogo_comuniazo(v_season,p_catalogo,null,v_actor);
 end; $$;
 
 -- Simulación: 24 muestras deterministas, asignación descendente al equipo
@@ -161,7 +95,7 @@ begin
  lock table public.players in share mode;
  perform 1 from public.teams where division_id=p_division order by id for update;
  perform app_private.admin_arranque_vacio(p_division);
- if not exists(select 1 from app_private.admin_catalogo_inicial where season_id=v_season) then raise exception 'Cargar primero el catálogo autorizado'; end if;
+ if not exists(select 1 from app_private.catalogo_comuniazo_runs where season_id=v_season) then raise exception 'Cargar primero el catálogo autorizado'; end if;
  if p_wealth is null or p_wealth not between 1 and 1000000000000 or p_min_cash is null or p_min_cash not between 0 and p_wealth
   or jsonb_typeof(p_slots) is distinct from 'object' or p_seed is null or length(p_seed) not between 1 and 100
   or p_market_date is null then raise exception 'Configuración inválida'; end if;

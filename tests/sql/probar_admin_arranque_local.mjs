@@ -52,6 +52,7 @@ try {
     }
     await db.exec(text);
   }
+  await db.exec(await sql("supabase/migrations/202611260004_catalogo_comuniazo_privado.sql"));
   await db.exec(await sql(proposal));
   await db.exec(await sql(rollback));
   await db.exec(await sql(proposal));
@@ -69,7 +70,7 @@ try {
     const team=(await query("insert into public.teams(division_id,manager_id,team_name) values($1,$2,$3) returning id",[i<16?division:foreignDivision,manager,'Equipo ficticio '+i]))[0].id;
     teams.push({user,team,manager});
   }
-  const snapshot=normalizarCatalogo({...catalogoFicticio(),kind:'authorized',provider:'simulador-local',permissionRef:'Ensayo local artificial, no datos reales'});
+  const snapshot=normalizarCatalogo({...catalogoFicticio(),kind:'authorized',provider:'comuniazo',permissionRef:'Ensayo local artificial, no datos reales',players:catalogoFicticio().players.map(p=>({...p,externalId:p.externalId.toLowerCase()}))});
   const login=async i=>{await db.exec('set role authenticated');await query("select set_config('request.jwt.claim.sub',$1,false)",[teams[i].user]);};
   const reset=()=>db.exec('reset role');
   const estado=async(d=division)=>(await query('select public.macroliga_admin_arranque_estado($1) result',[d]))[0].result;
@@ -90,10 +91,10 @@ try {
   await assert.rejects(simular(),/Cargar primero/);
   await assert.rejects(importar(catalogoFicticio()),/no autorizado/);
   const bad=structuredClone(snapshot);bad.players.at(-1).externalId=bad.players[0].externalId;
-  await assert.rejects(importar(bad),/duplicate key/);
+  await assert.rejects(importar(bad),/duplicado/);
   await reset();assert.deepEqual(await counts(),empty);await login(0);
   const imported=await importar();assert.equal(imported.catalogCount,500);assert.deepEqual(await importar(),imported);
-  await assert.rejects(importar({...snapshot,permissionRef:'otra'}),/ya cargado/);
+  await assert.rejects(importar({...snapshot,permissionRef:'otra'}),/catálogo distinto/);
   assert.equal((await estado()).catalogReady,true);await reset();
   assert.deepEqual(await counts(),{...empty,players:500,prices:500,imports:1});
   console.log('PASS permisos y separación de carga; importación atómica/idempotente');

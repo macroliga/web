@@ -3,7 +3,7 @@
 import { refreshValido } from './session.mjs?v=10';
 
 const ADMIN = new Set(['macroliga_admin_arranque_estado','macroliga_admin_importar_catalogo','macroliga_admin_simular_reparto','macroliga_admin_aplicar_reparto']);
-const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo']);
+const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo', 'macroliga_catalogo_division']);
 
 function extraerSesion(data) {
   if (!data?.access_token || !refreshValido(data?.refresh_token)) {
