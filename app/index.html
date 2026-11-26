@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-release="19">
+<html lang="es" data-release="20">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=15">
+  <link rel="stylesheet" href="./styles.css?v=20">
 </head>
 <body>
   <div class="shell">
@@ -116,9 +116,21 @@
               <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
             </div>
             <p id="team-refresh-status" role="status"></p>
+            <section class="team-summary" aria-labelledby="my-standing-title">
+              <div class="team-section-heading">
+                <h3 id="my-standing-title">🏆 Mi clasificación</h3>
+                <button type="button" data-view="standings" class="team-text-link">Ver clasificación →</button>
+              </div>
+              <p id="team-standing-status">Consulta la clasificación general y los puntos de tu división.</p>
+            </section>
+            <section class="team-summary" aria-labelledby="my-honours-title">
+              <div class="team-section-heading"><h3 id="my-honours-title">🏅 Mi palmarés</h3></div>
+              <p>Los títulos, podios e históricos aparecerán cuando se disputen temporadas de MACROLIGA.</p>
+            </section>
             <div class="squad-section">
-              <h3>Mi plantilla</h3>
-              <ul id="roster-list" aria-live="polite"></ul>
+              <div class="team-section-heading"><h3>⚽ Mi plantilla</h3><span id="roster-total" class="roster-total">0 / 16</span></div>
+              <p class="team-sale-notice">La venta inmediata al Equipo Malo y la puesta en mercado son operaciones diferentes. Se habilitarán cuando el servidor permita realizarlas con seguridad.</p>
+              <div id="roster-list" class="roster-groups" aria-live="polite"></div>
             </div>
           </div>
         </section>
@@ -233,9 +245,9 @@
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
-    <div class="release-info"><span>Aplicación piloto · versión 19</span><button id="app-refresh" type="button">Actualizar app</button></div>
+    <div class="release-info"><span>Aplicación piloto · versión 20</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=19"></script>
+  <script type="module" src="./app.js?v=20"></script>
 </body>
 </html>
