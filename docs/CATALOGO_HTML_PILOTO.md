@@ -45,3 +45,27 @@ carga inicial, idempotencia, altas/bajas, congelación de valor/puntos,
 aislamiento, mercado pendiente, posiciones y rollback de fallos.
 19 pruebas Python y 158 pruebas Node superadas; comprobación sintáctica.
 La reversión de la función no borra el catálogo ya importado.
+
+## Primera carga real verificada: 26/11/2026
+
+- Implementación: GitHub `dev/catalogo-integracion`, commit
+  `3758b7d793eaa3892516e65d32340c6a6102d68c`.
+- Migración aplicada al piloto: `catalogo_html_operador`, con la misma
+  función invoker y revocaciones verificadas para anon, authenticated,
+  service_role, macroliga_runner.
+- Importación única: 551 activos, 551 registros de valor, 551 puntos
+  acumulados, 20 clubes; 47 GK, 187 DEF, 211 MID, 106 FWD.
+  Huella `a978e5aba19bf73782b2f9a637a86519654be94658de807b2fbc430aa385d9c6`.
+- Tras la carga: 16 equipos, un administrador, 0 titularidades, 0
+  movimientos de caja, 0 ciclos y 0 pujas. Consulta de lectura autenticada
+  (rol local en transacción revertida) confirma catálogo paginado y
+  vista previa de 15 jugadores (2 GK/5 DEF/5 MID/3 FWD); admin:
+  catalogReady=true, initialized=false, marketPrepared=false.
+- Tarea diaria creada y habilitada: 07:00 Europe/Madrid, próxima
+  ejecución 27/11/2026. El primer ciclo programado aún no ha ocurrido.
+- Asesores de Supabase: advertencias de RPC definer autenticadas y
+  protección de contraseñas filtradas, y aviso informativo RLS sin policy.
+  La función nueva es invoker no ejecutable por roles de aplicación.
+  No se cambian las políticas de autenticación ni los permisos existentes.
+- Copia temporal del lote eliminada. No se ha modificado Laviana ni
+  se ha activado un mercado.
