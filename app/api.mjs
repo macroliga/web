@@ -56,7 +56,7 @@ export function crearCliente({ supabaseUrl, anonKey, fetchImpl = fetch }) {
       return extraerSesion(data);
     },
     async renovarSesion(refreshToken) {
-      if (typeof refreshToken !== 'string' || refreshToken.length < 20) {
+      if (typeof refreshToken !== 'string' || refreshToken.length < 1) {
         throw new Error('No hay sesión para recuperar.');
       }
       const data = await solicitar('/auth/v1/token?grant_type=refresh_token',
