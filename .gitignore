@@ -7,3 +7,6 @@ node_modules/
 npm-debug.log*
 coverage/
 .DS_Store
+
+# Contrasenas temporales de los entrenadores ficticios (solo en equipo local)
+.macroliga-local/
