@@ -1,8 +1,8 @@
 // MACROLIGA - recursos publicos, NUNCA sesiones, tokens, API ni claves.
 // Cache static-only, versionado para actualizar PWA tras cada entrega.
-const CACHE = 'macroliga-pwa-estatica-v5';
+const CACHE = 'macroliga-pwa-estatica-v6';
 const STATIC = ['./index.html','./styles.css','./app.js','./api.mjs',
-  './logic.mjs','./entrenadores.mjs','./icon.svg'];
+  './logic.mjs','./entrenadores.mjs','./session.mjs','./icon.svg'];
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC))
     .then(() => self.skipWaiting()));
