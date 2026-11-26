@@ -1,8 +1,9 @@
 import { crearCliente } from './api.mjs';
 import { mercadoAbierto, equipoMaloAbierto, euros } from './logic.mjs';
+import { cuentasDemostracion } from '../src/demo/entrenadores_historicos.mjs';
 
 const buscar = (id) => document.getElementById(id);
-const correo = buscar('email');
+const entrenador = buscar('manager-select');
 const clave = buscar('password');
 const entrar = buscar('login-button');
 const salir = buscar('logout-button');
@@ -26,7 +27,7 @@ horarios();
 setInterval(horarios, 60000);
 
 function activarSesion(si) {
-  correo.disabled = si;
+  entrenador.disabled = si;
   clave.disabled = si;
   entrar.hidden = si;
   salir.hidden = !si;
@@ -81,13 +82,29 @@ async function cargarEquipo() {
   aviso('Sesion iniciada. Hola, ' + equipo.nombre_manager + '.');
 }
 
+// Igual que en Comunio Laviana: solo se escoge el nombre y se escribe el PIN.
+for (const cuenta of cuentasDemostracion()) {
+  const opcion = document.createElement('option');
+  opcion.value = cuenta.correo;
+  opcion.textContent = cuenta.entrenador;
+  entrenador.appendChild(opcion);
+}
+clave.addEventListener('input', () => {
+  clave.value = clave.value.replace(/\D/g, '').slice(0, 6);
+});
+
 formulario.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!cliente) return;
   entrar.disabled = true;
   aviso('Comprobando acceso…');
   try {
-    token = await cliente.iniciarSesion(correo.value.trim(), clave.value);
+    const cuenta = cuentasDemostracion().find((c) => c.correo === entrenador.value);
+    if (!cuenta) throw new Error('Selecciona un entrenador.');
+    if (!/^\d{6}$/.test(clave.value)) {
+      throw new Error('Introduce un PIN de 6 cifras.');
+    }
+    token = await cliente.iniciarSesion(cuenta.correo, clave.value);
     clave.value = '';
     await cargarEquipo();
     activarSesion(true);
@@ -113,11 +130,11 @@ salir.addEventListener('click', async () => {
 try {
   cliente = crearCliente(window.MACROLIGA_CONFIG || {});
   buscar('connection-state').textContent = 'API configurada';
-  aviso('Acceso reservado a cuentas creadas por el administrador.');
+  aviso('Selecciona un entrenador y escribe su PIN provisional.');
 } catch {
   entrar.disabled = true;
   buscar('connection-state').textContent = 'Pendiente de configurar';
-  aviso('Vista previa sin cuentas reales. Falta configurar la clave publica de la API.');
+  aviso('Vista previa: pendiente de configurar la conexión pública de MACROLIGA.');
 }
 
 // Cache solo de archivos estaticos; nunca de datos de futbolistas ni sesiones.
