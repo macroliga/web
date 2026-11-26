@@ -1,6 +1,8 @@
 import { crearCliente } from './api.mjs';
 import { euros } from './logic.mjs';
 import { cuentasDemostracion } from './entrenadores.mjs';
+import { recordarEntrenador, entrenadorRecordado, guardarSesion,
+  sesionRecordada, olvidarSesion, SESION_KEY } from './session.mjs';
 
 // El contenido privado permanece oculto hasta validar nombre + PIN en Supabase.
 const el = (id) => document.getElementById(id);
@@ -29,6 +31,9 @@ const SECCIONES = Object.freeze({
 let cliente = null;
 let token = null;
 let intento = 0;
+let venceEn = 0;
+let refrescando = false;
+const storage = (() => { try { return window.localStorage; } catch { return null; } })();
 
 function aviso(texto) {
   loginMessage.textContent = texto;
@@ -63,6 +68,7 @@ function borrarDatosPrivados() {
 function mostrarAcceso() {
   pin.value = '';
   token = null;
+  venceEn = 0;
   privateView.hidden = true;
   topBalance.hidden = true;
   el('prototype-note').hidden = true;
@@ -93,6 +99,21 @@ function pintarPlantilla(jugadores) {
     lista.appendChild(li); // Se muestra como texto, nunca como HTML.
   }
 }
+async function consultarEquipo(jwt) {
+  const equipos = await cliente.consultar('macroliga_mi_equipo', {}, jwt);
+  if (!Array.isArray(equipos) || equipos.length !== 1) {
+    throw new Error('No se ha encontrado un único equipo para este entrenador.');
+  }
+  const equipo = equipos[0];
+  const jugadores = await cliente.consultar('macroliga_plantilla_equipo',
+    {p_equipo_id: equipo.equipo_id}, jwt);
+  if (!Array.isArray(jugadores)) throw new Error('No se pudo consultar la plantilla.');
+  return {equipo, jugadores};
+}
+function venceSesion(sesion) {
+  venceEn = Date.now() + Math.max(60, Number(sesion.expiresIn) || 3600) * 1000;
+}
+
 function pintarEquipo(equipo, jugadores) {
   el('team-short-name').textContent = equipo.nombre_equipo;
   el('team-title').textContent = equipo.nombre_equipo;
@@ -107,11 +128,15 @@ function pintarEquipo(equipo, jugadores) {
 
 // El email ficticio no se solicita al usuario. Es el alias interno del nombre.
 const cuentas = cuentasDemostracion();
+const nombreGuardado = entrenadorRecordado(storage);
 for (const cuenta of cuentas) {
   const opcion = document.createElement('option');
   opcion.value = cuenta.correo;
   opcion.textContent = cuenta.entrenador;
   entrenador.appendChild(opcion);
+}
+if (nombreGuardado && cuentas.some((c) => c.correo === nombreGuardado)) {
+  entrenador.value = nombreGuardado;
 }
 pin.addEventListener('input', () => {
   pin.value = pin.value.replace(/\D/g, '').slice(0, 6);
@@ -129,26 +154,23 @@ loginForm.addEventListener('submit', async (event) => {
   const numeroIntento = ++intento;
   loginButton.disabled = true;
   aviso('Comprobando PIN…');
-  let nuevoToken = null;
+  let nuevaSesion = null;
   try {
-    nuevoToken = await cliente.iniciarSesion(cuenta.correo, pin.value);
-    const equipos = await cliente.consultar('macroliga_mi_equipo', {}, nuevoToken);
-    if (!Array.isArray(equipos) || equipos.length !== 1) {
-      throw new Error('No se ha encontrado un único equipo para este entrenador.');
-    }
-    const equipo = equipos[0];
-    const jugadores = await cliente.consultar('macroliga_plantilla_equipo',
-      {p_equipo_id: equipo.equipo_id}, nuevoToken);
-    if (!Array.isArray(jugadores)) throw new Error('No se pudo consultar la plantilla.');
+    nuevaSesion = await cliente.iniciarSesionConSesion(cuenta.correo, pin.value);
+    const {equipo, jugadores} = await consultarEquipo(nuevaSesion.accessToken);
     if (numeroIntento !== intento) {
-      await cliente.cerrarSesion(nuevoToken);
+      await cliente.cerrarSesion(nuevaSesion.accessToken);
       return;
     }
-    token = nuevoToken;
+    token = nuevaSesion.accessToken;
+    venceSesion(nuevaSesion);
+    recordarEntrenador(storage, cuenta.correo);
+    // Solo se conserva el refresh token, nunca el PIN.
+    guardarSesion(storage, cuenta.correo, nuevaSesion.refreshToken);
     pintarEquipo(equipo, jugadores);
     mostrarAplicacion();
   } catch (error) {
-    if (nuevoToken) await cliente.cerrarSesion(nuevoToken);
+    if (nuevaSesion?.accessToken) await cliente.cerrarSesion(nuevaSesion.accessToken);
     if (numeroIntento === intento) {
       mostrarAcceso();
       aviso(error.message || 'No se pudo iniciar sesión.');
@@ -161,10 +183,90 @@ loginForm.addEventListener('submit', async (event) => {
 el('logout-button').addEventListener('click', () => {
   const anterior = token;
   ++intento;
+  // La acción Salir revoca el acceso local inmediatamente.
+  olvidarSesion(storage);
   mostrarAcceso();
-  loginForm.reset();
-  aviso('Has salido. Elige un entrenador para volver a entrar.');
+  aviso('Has salido. Tu entrenador sigue seleccionado por comodidad.');
   if (anterior && cliente) void cliente.cerrarSesion(anterior);
+});
+
+async function restaurarSesion() {
+  const guardada = sesionRecordada(storage);
+  if (!cliente || !guardada) return;
+  const existe = cuentas.some((c) => c.correo === guardada.email);
+  if (!existe) { olvidarSesion(storage); return; }
+  const numeroIntento = ++intento;
+  loginButton.disabled = true;
+  aviso('Recuperando tu sesión…');
+  let renovada = null;
+  try {
+    renovada = await cliente.renovarSesion(guardada.refreshToken);
+    // Los refresh tokens de Supabase rotan: persistir el nuevo antes
+    // de consultar el equipo para no reutilizar uno antiguo por accidente.
+    if (numeroIntento !== intento) return;
+    guardarSesion(storage, guardada.email, renovada.refreshToken);
+    const {equipo, jugadores} = await consultarEquipo(renovada.accessToken);
+    if (numeroIntento !== intento) return;
+    token = renovada.accessToken;
+    venceSesion(renovada);
+    entrenador.value = guardada.email;
+    recordarEntrenador(storage, guardada.email);
+    pintarEquipo(equipo, jugadores);
+    mostrarAplicacion();
+  } catch (error) {
+    if (numeroIntento !== intento) return;
+    if (error.status === 400 || error.status === 401) {
+      olvidarSesion(storage);
+      mostrarAcceso();
+      aviso('Tu sesión ha caducado. Introduce el PIN para volver a entrar.');
+    } else {
+      mostrarAcceso();
+      aviso('No se pudo recuperar tu sesión. Comprueba la conexión e inténtalo de nuevo.');
+    }
+  } finally {
+    if (numeroIntento === intento) loginButton.disabled = false;
+  }
+}
+
+// El móvil puede suspender la PWA: al volver, renovar solo si queda poco
+// tiempo de validez. Nunca mostramos datos ajenos mientras recuperamos.
+async function renovarSiCaduca() {
+  if (!cliente || !token || refrescando || Date.now() + 120000 < venceEn) return;
+  const guardada = sesionRecordada(storage);
+  if (!guardada) return;
+  const numeroIntento = intento;
+  const tokenAnterior = token;
+  refrescando = true;
+  try {
+    const renovada = await cliente.renovarSesion(guardada.refreshToken);
+    if (numeroIntento !== intento || token !== tokenAnterior) return;
+    guardarSesion(storage, guardada.email, renovada.refreshToken);
+    token = renovada.accessToken;
+    venceSesion(renovada);
+  } catch (error) {
+    if (numeroIntento !== intento) return;
+    if (error.status === 400 || error.status === 401) {
+      olvidarSesion(storage);
+      mostrarAcceso();
+      aviso('La sesión ha caducado. Introduce tu PIN para volver a entrar.');
+    }
+  } finally {
+    refrescando = false;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void renovarSiCaduca();
+});
+window.addEventListener('storage', (event) => {
+  // Si el usuario cierra sesión en otra pestaña del mismo navegador,
+  // se ocultan también aquí sus datos privados.
+  if (event.key === SESION_KEY && event.newValue === null && token) {
+    ++intento;
+    const anterior = token;
+    mostrarAcceso();
+    aviso('Has salido en otra ventana.');
+    if (cliente) void cliente.cerrarSesion(anterior);
+  }
 });
 
 try {
@@ -175,8 +277,10 @@ try {
   aviso('La conexión de MACROLIGA no está disponible todavía.');
 }
 
-// No se guardan contraseñas ni tokens en localStorage o cookies de la PWA.
+// El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
+// el token de renovación que emite Supabase en este dispositivo.
 mostrarAcceso();
+if (cliente) void restaurarSesion();
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
