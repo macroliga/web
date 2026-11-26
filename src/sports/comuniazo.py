@@ -1,6 +1,7 @@
 """MACROLIGA: extractor independiente de páginas deportivas de Comuniazo.
 Sin dependencias de Laviana, sin credenciales y sin escrituras en Supabase.
-El transporte real solo se habilita con una referencia de autorización expresa.
+La exportación persistente exige documentar la base legítima de reutilización;
+la autorización del operador no se presenta como licencia del proveedor.
 """
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -54,10 +55,10 @@ class NoRedirect(HTTPRedirectHandler):
 
 def validate_permission(permission):
     if not isinstance(permission,dict) or permission.get("authorized") is not True or permission.get("provider") != "comuniazo" or permission.get("competition") != "LALIGA" or permission.get("season") != SEASON:
-        raise ValueError("Hace falta autorización documentada para Comuniazo/MACROLIGA")
+        raise ValueError("Hace falta autorización o una base legítima de uso documentada para Comuniazo/MACROLIGA")
     ref = permission.get("permissionRef")
     if not isinstance(ref,str) or not ref or ref != ref.strip() or len(ref)>500 or any(ord(c)<32 or ord(c)==127 for c in ref):
-        raise ValueError("Referencia de autorización escrita obligatoria")
+        raise ValueError("Referencia verificable de autorización o base legítima de uso obligatoria")
     return ref
 
 def _public_fetcher():
@@ -66,7 +67,7 @@ def _public_fetcher():
     def fetch(path):
         if path not in allowed:
             raise ValueError("Ruta no permitida")
-        req = Request(ORIGIN+path, headers={"User-Agent":"MACROLIGA/1.0 (importación deportiva autorizada)", "Accept":"text/html,application/xhtml+xml", "Accept-Language":"es-ES,es;q=0.9"})
+        req = Request(ORIGIN+path, headers={"User-Agent":"MACROLIGA/1.0 (consulta de datos deportivos públicos)", "Accept":"text/html,application/xhtml+xml", "Accept-Language":"es-ES,es;q=0.9"})
         # No seguir redirecciones (incluidas las del mismo dominio).
         with build_opener(NoRedirect()).open(req, timeout=40) as response:
             if response.status != 200 or response.geturl() != ORIGIN+path or response.headers.get_content_type() not in ("text/html","application/xhtml+xml"):
@@ -195,14 +196,15 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnosti
     seen=datetime.now(timezone.utc) if now is None else now
     if seen.utcoffset() is None: raise ValueError("Fecha sin zona horaria")
     stamp=seen.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
-    active=[]; excluded=[]
+    active=[]; excluded=0
     for key,row in sorted(overall.items()):
         if key in membership:
             active.append({"externalId":key,"name":row["name"],"club":membership[key],"position":positions[key],"active":True,"marketValueCents":row["marketValueCents"]})
         else:
-            # Histórico no verificado: se descarga y se conserva de forma
-            # privada, pero no se inventa club, posición o valor.
-            excluded.append({"externalId":key,**row,"position":positions.get(key),"reason":"sin_club_en_plantillas_actuales"})
+            # Histórico desconocido: descartar identidad, precio y puntos.
+            # Solo conservar el recuento de exclusiones; los futbolistas ya
+            # pertenecientes al catálogo se tratan abajo con su última ficha.
+            excluded+=1
     # No eliminar futbolistas ya conocidos ni sus activos económicos. Si
     # desaparecen de las plantillas, conservar su última identidad y valor
     # verificable marcados como inactivos, con el club anterior en el historial.
@@ -219,7 +221,7 @@ def extract_catalog(fetch, *, permission_ref, now=None, previous=None, diagnosti
         "priceChanges":sum(k in previous_by_id and previous_by_id[k]["marketValueCents"]!=new_by_id[k]["marketValueCents"] for k in membership),
         "clubChanges":sum(k in previous_by_id and previous_by_id[k]["club"]!=new_by_id[k]["club"] for k in membership),
         "positionChanges":sum(k in previous_by_id and previous_by_id[k]["position"]!=new_by_id[k]["position"] for k in membership)}
-    info={"asOf":stamp,"clubs":len(names),"downloaded":len(overall),"active":len(membership),"excluded":len(excluded),"historicalRetained":len(active)-len(membership),"changes":diff,"points":[{"externalId":key,"points":overall[key]["points"]} for key in sorted(membership)],"excludedRows":excluded}
+    info={"asOf":stamp,"clubs":len(names),"downloaded":len(overall),"active":len(membership),"excluded":excluded,"historicalRetained":len(active)-len(membership),"changes":diff,"points":[{"externalId":key,"points":overall[key]["points"]} for key in sorted(membership)]}
     return snapshot,info
 
 
@@ -229,4 +231,4 @@ def diagnostico_publico(fetch=None):
     No equivale a autorización para reutilizar o automatizar la publicación.
     """
     _,info=extract_catalog(fetch if fetch is not None else _public_fetcher(),permission_ref="Diagnóstico no persistente; no acredita autorización",diagnostic=True)
-    return {k:v for k,v in info.items() if k not in ("points","excludedRows","changes")}
+    return {k:v for k,v in info.items() if k not in ("points","changes")}

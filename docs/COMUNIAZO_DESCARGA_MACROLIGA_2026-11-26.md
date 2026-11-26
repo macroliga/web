@@ -48,14 +48,14 @@ de un jugador en el listado general **no prueba** que siga en LaLiga.
 - Conversión exacta de euros enteros a céntimos. Un valor 0 legítimo no hace
   desaparecer el jugador; el motor de arranque y de mercado ya excluye
   valores no positivos. No se inventan precios ausentes.
-- Los históricos del listado se recogen en el informe local privado; no
-  se inventa un club para ellos. Los jugadores que pertenecieron a
+- De los históricos desconocidos, el informe privado solo conserva su número;
+  no guarda su nombre, identidad, valor, puntos ni club. Los jugadores que pertenecieron a
   MACROLIGA conservan su ID, último club/valor registrado y se marcan
   inactivos si salen de las 20 plantillas. Más de 30 bajas o >10% dispara
   revisión, no una desactivación masiva automática.
 - Informe diario de altas, reactivaciones, bajas, cambios de precios, clubes
   y posiciones, huella de catálogo, puntos acumulados (informativos) y
-  filas excluidas. No se usan acumulados como puntos por jornada.
+  recuento de filas excluidas. No se usan acumulados como puntos por jornada.
 - El CLI `scripts/descargar-comuniazo.py` genera snapshot canónico con el
   validador JavaScript existente y su hash verificable; no crea/reparte
   equipos ni modifica Supabase. Un directorio fechado por Europe/Madrid
@@ -82,8 +82,8 @@ encontrado evidencia de permiso específico de Comuniazo para MACROLIGA.
 El hecho de que el método de otro proyecto funcione no acredita ese permiso.
 No se ha realizado una extracción masiva real ni contratado un servicio.
 
-Para ejecutar después de obtener permiso, instalar deps de Python en entorno
-local y preparar un fichero privado con el permiso **real** (no usar esta
+Para ejecutar después de documentar una base legítima de reutilización, instalar deps de Python en entorno
+local y preparar un fichero privado con la referencia **real** (no usar esta
 plantilla como si fuera una autorización):
 
 ```json
@@ -92,7 +92,7 @@ plantilla como si fuera una autorización):
   "provider": "comuniazo",
   "competition": "LALIGA",
   "season": "2026_27",
-  "permissionRef": "REFERENCIA DE AUTORIZACIÓN ESCRITA REAL"
+  "permissionRef": "REFERENCIA REAL DE AUTORIZACIÓN O BASE LEGÍTIMA DE USO"
 }
 ```
 
@@ -101,7 +101,7 @@ python -m pip install -r requirements-comuniazo.txt
 python -B scripts/descargar-comuniazo.py --permiso .macroliga-local/permiso-comuniazo.json --directorio .macroliga-local/comuniazo
 ```
 
-No ejecutar por ahora. El fichero es un control de operador, no una licencia
+El fichero es un control de operador, no una licencia
 verificable criptográficamente ni una sustitución de la autorización del titular.
 Nunca incluir permiso con información privada ni credenciales en Git.
 El resultado es un catálogo validado y un informe; el permiso de despliegue
@@ -144,3 +144,20 @@ Se comprobaron los cuatro filtros de posición y no faltaron valores/posiciones
 de activos. Sin persistir fichero de futbolistas, sin repartir, sin modificar
 Supabase o Laviana. Es una comprobación técnica puntual, no una activación
 diaria ni una publicación de la base deportiva.
+
+## Aclaración de procedencia y uso (26/11/2026)
+
+El usuario confirma que MACROLIGA es una liga privada de 16 participantes,
+sin ánimo de lucro, publicidad, visitas monetizadas ni distribución pública
+del catálogo. La fuente acordada sigue siendo Comuniazo. Los valores de
+mercado corresponden al juego Comunio; la web presenta estadísticas que
+proceden de terceros. No se afirma que Comuniazo sea titular de cada dato
+factual, ni que todo uso privado sea ilegal. Tampoco se presupone que esos
+hechos acrediten derechos sobre la extracción sistemática de una base
+compilada. La referencia de uso puede ser una base legítima comprobable
+distinta de una autorización escrita del portal (por ejemplo, una licencia
+de datos aplicable). No registrar una decisión del usuario como licencia
+de terceros. La publicación de datos en el piloto sigue pendiente. No
+contactar al proveedor sin autorización expresa. Se descarta ComunioStats
+como sustitución automática por antecedentes de fiabilidad informados por
+el usuario; no modificar Laviana.

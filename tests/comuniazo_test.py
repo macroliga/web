@@ -77,7 +77,9 @@ class TestComuniazo(unittest.TestCase):
         self.assertEqual(len([p for p in snap["players"] if p["name"]=="Álex de prueba"]),20)
         self.assertEqual(next(p for p in snap["players"] if p["externalId"]=="ficticio-1-0")["marketValueCents"],"0")
         self.assertIn("ficticio-1-1",{p["externalId"] for p in snap["players"]})  # lesionado/0 puntos
-        self.assertTrue(all(x["reason"]=="sin_club_en_plantillas_actuales" for x in info["excludedRows"]))
+        self.assertNotIn("excludedRows",info)
+        self.assertNotIn("historico-0",json.dumps(info))
+        self.assertEqual(len(info["points"]),500)
     def test_fallback_indice_vacio(self):
         self.pages[cz.INDEX]="<h1>LaLiga</h1>"
         self.assertEqual(self.extract()[1]["active"],500)
@@ -183,6 +185,8 @@ class TestComuniazo(unittest.TestCase):
             report=json.loads((days[0]/"informe-deportivo.json").read_text())
             self.assertEqual(snapshot["snapshotHash"],report["snapshotHash"])
             self.assertEqual(len(snapshot["players"]),500)
+            self.assertNotIn("excludedRows",report)
+            self.assertNotIn("historico-0",json.dumps(report))
             self.assertEqual(len(self.calls),26)
             bad=tmp/"mal"
             self.pages[sorted(cz.CLUBS)[0]]="<h1>Club</h1>"

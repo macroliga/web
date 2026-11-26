@@ -1,5 +1,5 @@
 """CLI de operador: solo salida local; no toca Supabase ni Laviana.
-Un lote por fecha de Madrid; sin autorización documentada no hace HTTP.
+Un lote por fecha de Madrid; la exportación exige una base de uso documentada.
 """
 import argparse
 import re
@@ -58,7 +58,7 @@ def main():
             # La descarga no se guarda hasta terminar correctamente todas las comprobaciones.
             if dest.exists(): raise ValueError("Descarga ya publicada localmente")
             staging.rename(dest)
-        print(json.dumps({**{k:v for k,v in info.items() if k not in ("points","excludedRows")},"mode":"PREPARADO LOCALMENTE; NO IMPORTADO A SUPABASE"},ensure_ascii=False))
+        print(json.dumps({**{k:v for k,v in info.items() if k not in ("points",)},"mode":"PREPARADO LOCALMENTE; NO IMPORTADO A SUPABASE"},ensure_ascii=False))
     finally:
         lock.unlink(missing_ok=True)
     return 0
