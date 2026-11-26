@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MACROLIGA">
+<rect width="512" height="512" rx="108" fill="#082637"/>
+<circle cx="256" cy="256" r="179" fill="#e6f4f2"/>
+<path d="m256 142 83 60-32 99h-102l-32-99z" fill="#186f76"/>
+<path d="M256 142V81M339 202l69-36M307 301l32 83M205 301l-32 83M173 202l-69-36" fill="none" stroke="#186f76" stroke-width="20" stroke-linecap="round"/>
+<circle cx="256" cy="256" r="178" fill="none" stroke="#4cbbb1" stroke-width="10"/>
+</svg>
