@@ -31,7 +31,7 @@ class Element{
  replaceChildren(){this.children=[];}
 }
 function fixture(){
- const ids=['message','form','preview','import-form','confirm','team-list','market-list','file','source-confirm','state','summary','wealth','cash','date','GK','DEF','MID','FWD','apply'];
+ const ids=['message','form','preview','import-form','confirm','team-list','market-list','file','source-confirm','state','summary','wealth','cash','date','GK','DEF','MID','FWD','apply','combined-confirm','combined-section','form-submit'];
  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
  Object.assign(elements.wealth,{value:'70'});Object.assign(elements.cash,{value:'0'});Object.assign(elements.date,{value:'2026-12-01'});
  for(const [p,n] of Object.entries(config.slots))elements[p].value=n;
@@ -67,4 +67,35 @@ test('admin: denegación no muestra datos y resultado asíncrono tras salir se d
  await panel.show();assert.match(e.message.textContent,/Solo el administrador/);assert.equal(e.form.hidden,true);
  denied=false;const pending=panel.show();panel.clear();resolve(state);await pending;
  assert.equal(root.hidden,true);assert.equal(e.state.textContent,'');assert.equal(e.form.hidden,true);
+});
+
+test('admin: arranque combinado requiere lote, confirmaciones y una clave estable de reintento',async()=>{
+ const {root,e}=fixture();let initialized=false,failed=false;const calls=[];
+ const blank={...state,catalogReady:false,catalogCount:0};
+ const data={catalogo:{kind:'authorized',permissionRef:'ficticia local',players:[{active:true,externalId:'fixture'}]},puntos:[{externalId:'fixture',points:0}]};
+ e.file.files=[{size:300,text:async()=>JSON.stringify(data)}];
+ const panel=crearPanelAdmin(root,()=>({division:'d',identity:'team',token:'jwt',client:{administrar:async(name,params)=>{
+   calls.push({name,params});
+   if(name.endsWith('_estado'))return initialized?{...state,initialized:true,marketPrepared:true}:blank;
+   if(name.endsWith('_iniciar_todo')){
+      if(!failed){failed=true;throw Error('red');}
+      initialized=true;return {teams:16,marketPlayers:15,rosterSpreadCents:'100'};
+   }
+   throw Error('No debe usar operaciones separadas');
+ }}}));
+ await panel.show();
+ assert.equal(e.form.hidden,false);assert.equal(e['import-form'].hidden,false);
+ assert.equal(e['combined-section'].hidden,false);assert.match(e['form-submit'].textContent,/Cargar, repartir/);
+ await e.form.emit('submit');assert.equal(calls.length,1);
+ e['source-confirm'].checked=true;e['combined-confirm'].checked=true;
+ await e.form.emit('submit');assert.equal(initialized,false);
+ assert.match(e.message.textContent,/Comprueba el estado/);
+ await e.form.emit('submit');assert.equal(initialized,true);
+ const combined=calls.filter(c=>c.name.endsWith('_iniciar_todo'));
+ assert.equal(combined.length,2);
+ assert.deepEqual(combined[0].params,combined[1].params);
+ assert.equal(combined[0].params.p_wealth,'7000000000');
+ assert.ok(!Object.hasOwn(combined[0].params,'p_seed'));
+ assert.equal(combined[0].params.p_catalogo.permissionRef,data.catalogo.permissionRef);
+ assert.equal(e.form.hidden,true);assert.match(e.message.textContent,/Arranque completo/);
 });

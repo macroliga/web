@@ -103,3 +103,60 @@ No se ha modificado el proyecto ni se han consultado recursos de Comunio Laviana
   esquema alojado y autorización de migración/publicación. Entonces cargar
   catálogo, simular con valores del día, revisar y confirmar el reparto.
   Cron y activación de mercado quedan expresamente fuera de esta entrega.
+
+## Actualización: arranque combinado y administrador autorizado
+(26/11/2026). Sustituye el estado de despliegue indicado arriba.
+
+- El usuario autorizó expresamente combinar importación/reparto y asignar
+  la administración a su manager existente Luis Aragonés. Se identificó
+  un único manager activo, vinculado a Auth y a la división PILOTO; se cambió
+  exclusivamente su flag is_admin de false a true, con auditoría de
+  propietario. Verificación alojada: 16 managers, exactamente 1 administrador,
+  Luis; resto sin cambios. No se han tocado usuarios Auth, PIN, tokens ni
+  la persistencia de sesión.
+- Instaladas y verificadas en el proyecto MACROLIGA macroliga-piloto
+  xuwjbfnhvvbdargcohfe:
+  - 20261126163443 arranque_combinado_privado_v01 (fichero
+    supabase/migrations/202611260008_arranque_combinado_privado.sql).
+  - 20261126163451 arranque_admin_division_v01 (fichero
+    supabase/migrations/202611260009_arranque_admin_division.sql).
+  Nombres de versión locales según convención del repositorio.
+  Reversiones en docs/propuestas/20261126_admin_arranque_rollback.sql y
+  docs/propuestas/20261126_arranque_propietario_rollback.sql (retirar
+  wrappers antes del núcleo; bloquear si ya se ha aplicado).
+- Operación combinada de una sola transacción: lote completo autorizado,
+  validar y cargar catálogo/puntos, reservar 15 lotes, simular/repartir
+  16 equipos con cuotas y patrimonio configurables, preparar mercado draft.
+  Por defecto 70 M€, 2/5/5/3 jugadores por equipo, caja mínima 0, mercado
+  previsto futuro. Si la diferencia de plantilla excede el 1% del
+  patrimonio o falla cualquier paso, revierte TODO. No abre el mercado.
+  Clave UUID y hash de petición para reintentos exactos sin duplicación;
+  repetir la misma clave con otra configuración se rechaza. El arranque
+  no reinicia una economía ya existente.
+- Núcleo SECURITY INVOKER, tabla privada con RLS sin políticas y sin
+  SELECT/EXECUTE para anon, authenticated, service_role ni runner. La
+  ejecución de propietario deja actor null (auditoría de operador, no
+  suplantación de manager). Wrappers SECURITY DEFINER con search_path vacío
+  y comprobación explícita de auth.uid(), is_admin y equipo activo de esa
+  división. Importación separada acotada al primer catálogo, no sustituye
+  un lote ni cambia economía. Sin acceso a otras divisiones.
+- Asesores alojados: 37 INFO RLS sin políticas (una tabla privada más),
+  14 WARN RPC SECURITY DEFINER ejecutables por authenticated (cinco
+  wrappers nuevos; verificación interna y pruebas de denegación), 1 WARN
+  previo de protección de contraseñas filtradas. No se cambió Auth.
+- Pruebas ejecutadas: 155/155 Node, npm run check correcto, PG 17.5 PGlite
+  0.3.14 con fixtures locales: denegación normal y de otra división;
+  propietario sin suplantación, importación completa de 500 fichas
+  ficticias, dos auditorías, fallo de configuración y de inserción del
+  último tramo revierten jugadores, valores, puntos, saldos, titulares,
+  lotes y auditoría; éxito de 16 equipos/240 titulares/16 saldos/15 lotes
+  draft/0 pujas, repetición exacta, conflicto de clave, rollback protegido.
+  Chromium móvil: 9 etapas superadas; se corrigió únicamente la expectativa
+  de versión de caché en la prueba, y se repitió completa. La UI combinada
+  está probada en DOM simulado; no se ha publicado la PWA principal.
+- Estado alojado posterior: 16 equipos, 16 managers, 1 admin, 0 jugadores,
+  titularidades, apuntes de caja, ciclos, pujas o planes de reparto.
+  No se han introducido fixtures en Supabase. La fuente sigue pendiente:
+  no hay lote autorizado local ni evidencia nueva de autorización del
+  proveedor. No se ha reutilizado catálogo de Comunio Laviana.
+  El arranque real se realizará conjuntamente cuando se disponga del lote.

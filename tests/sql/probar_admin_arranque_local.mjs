@@ -15,7 +15,9 @@ const db=new PGlite(pgcrypto?{extensions:{pgcrypto}}:{});
 
 const root=new URL('../../',import.meta.url);
 const sql=async path=>readFile(new URL(path,root),'utf8');
-const proposal='docs/propuestas/20261126_admin_arranque.sql';
+const core='supabase/migrations/202611260008_arranque_combinado_privado.sql';
+const coreRollback='docs/propuestas/20261126_arranque_propietario_rollback.sql';
+const proposal='supabase/migrations/202611260009_arranque_admin_division.sql';
 const rollback='docs/propuestas/20261126_admin_arranque_rollback.sql';
 const query=async(text,args=[])=> (await db.query(text,args)).rows;
 const counts=async()=> (await query(`select
@@ -58,9 +60,9 @@ try {
   await db.exec(await sql(selector));await db.exec(await sql(selectorRollback));await db.exec(await sql(selector));
   const standings='supabase/migrations/202611260007_clasificacion_managers.sql';
   await db.exec(await sql(standings));await db.exec(await sql('docs/propuestas/20261126_clasificacion_managers_rollback.sql'));await db.exec(await sql(standings));
-  await db.exec(await sql(proposal));
-  await db.exec(await sql(rollback));
-  await db.exec(await sql(proposal));
+  await db.exec(await sql(core));await db.exec(await sql(proposal));
+  await db.exec(await sql(rollback));await db.exec(await sql(coreRollback));
+  await db.exec(await sql(core));await db.exec(await sql(proposal));
   console.log('PASS instalación/reversión estructural sin uso; 14 migraciones versionadas; auth y función Supabase automática simuladas');
 
   const comp=(await query("insert into public.competitions(code,name) values('MACROLIGA_PILOTO_INVIERNO_2026','Test') returning id"))[0].id;
@@ -82,6 +84,8 @@ try {
   const puntos=snapshot.players.map((p,i)=>({externalId:p.externalId,points:i}));
   const importar=async(s=snapshot)=>(await query('select public.macroliga_admin_importar_catalogo($1,$2::jsonb,$3::jsonb) result',[division,JSON.stringify(s),JSON.stringify(puntos)]))[0].result;
   const simular=async(w='7200000000',slots={GK:2,DEF:5,MID:5,FWD:3},seed='prueba',cash='1000000000')=>(await query("select public.macroliga_admin_simular_reparto($1,$2,$3::jsonb,$4,$5,current_date+2) result",[division,w,JSON.stringify(slots),cash,seed]))[0].result;
+  const requestId='00000000-0000-4000-8000-000000000001';
+  const combinado=async({owner=false,d=division,s=snapshot,pts=puntos,w='7000000000',slots={GK:2,DEF:5,MID:5,FWD:3},cash='0',request=requestId}={})=>(await query('select '+(owner?'app_private.iniciar_todo_propietario':'public.macroliga_admin_iniciar_todo')+'($1,$2::jsonb,$3::jsonb,$4,$5::jsonb,$6,current_date+2,$7) result',[d,JSON.stringify(s),JSON.stringify(pts),w,JSON.stringify(slots),cash,request]))[0].result;
   const aplicar=async(id)=>(await query('select public.macroliga_admin_aplicar_reparto($1,$2) result',[division,id]))[0].result;
   const visible=async(d=division)=>query('select * from public.macroliga_mercado_visible($1)',[d]);
   const classification=async(d=division)=>query('select * from public.macroliga_clasificacion($1)',[d]);
@@ -96,6 +100,8 @@ try {
   await assert.rejects(estado(),/denegado/);
   await assert.rejects(query("update public.managers set is_admin=true"),/permission denied/);
   await assert.rejects(importar(),/denegado/);
+  await assert.rejects(combinado(),/denegado/);
+  await assert.rejects(combinado({owner:true}),/permission denied/);
   await assert.rejects(simular(),/denegado/);
   await assert.rejects(aplicar(division),/denegado/);
   await reset();await login(16);
@@ -108,6 +114,46 @@ try {
   const bad=structuredClone(snapshot);bad.players.at(-1).externalId=bad.players[0].externalId;
   await assert.rejects(importar(bad),/duplicado/);
   await reset();assert.deepEqual(await counts(),empty);await login(0);
+  await assert.rejects(combinado({pts:null}),/lote completo/);
+  await assert.rejects(combinado({s:catalogoFicticio()}),/no autorizado/);
+  await assert.rejects(combinado({slots:{GK:0,DEF:7,MID:5,FWD:3}}),/Cuotas/);
+  // Aunque la importación ya había ocurrido en la llamada, no deja nada.
+  await reset();assert.deepEqual(await counts(),empty);
+  await db.exec("alter table public.market_lots add constraint test_combined_failure check(minimum_bid_cents=0)");
+  await login(0);await assert.rejects(combinado(),/test_combined_failure/);await reset();
+  assert.deepEqual(await counts(),empty);
+  assert.equal((await query('select count(*)::int n from app_private.admin_repartos'))[0].n,0);
+  assert.equal((await query('select count(*)::int n from public.admin_audit'))[0].n,0);
+  await db.exec('alter table public.market_lots drop constraint test_combined_failure');
+  // Caso completo, verificación de la repetición y conflicto en una
+  // transacción local que se revierte para conservar las pruebas separadas.
+  await db.exec('begin');
+  await login(0);
+  const combined=await combinado();
+  assert.equal(combined.catalog.active,500);
+  assert.equal(combined.catalog.accumulatedPoints,500);
+  assert.equal(combined.teams,16);assert.equal(combined.marketPlayers,15);
+  assert.equal(combined.marketStatus,'draft');assert.equal(combined.wealthCents,'7000000000');
+  assert.ok(BigInt(combined.rosterSpreadCents)<=70000000n);
+  assert.deepEqual(await combinado(),combined);
+  await db.exec('savepoint conflict');
+  await assert.rejects(combinado({w:'7100000000'}),/Clave de arranque/);
+  await db.exec('rollback to savepoint conflict');
+  await reset();
+  assert.deepEqual(await counts(),{players:500,ownership:240,wallet:16,imports:1,prices:500,cycles:1});
+  assert.equal((await query("select count(*)::int n from public.market_lots l join public.roster_ownership o on o.division_id=l.division_id and o.player_id=l.player_id"))[0].n,0);
+  assert.equal((await query("select count(*)::int n from public.bids"))[0].n,0);
+  await db.exec('rollback');assert.deepEqual(await counts(),empty);
+  await db.exec('begin');
+  const ownerCombined=await combinado({owner:true});
+  assert.equal(ownerCombined.teams,16);
+  assert.deepEqual(await combinado({owner:true}),ownerCombined);
+  assert.equal((await query("select count(*)::int n from public.admin_audit where actor_manager_id is null"))[0].n,2);
+  assert.equal((await query("select count(*)::int n from app_private.admin_repartos where actor is null and applied is not null"))[0].n,1);
+  await db.exec('rollback');assert.deepEqual(await counts(),empty);
+  console.log('PASS operador propietario sin suplantar manager, auditoría y repetición');
+  console.log('PASS arranque combinado: lote completo, todo o nada, 16 equipos, 15 libres, idempotencia y conflicto de clave');
+  await login(0);
   const imported=await importar();assert.equal(imported.catalogCount,500);assert.equal(imported.accumulatedPoints,500);assert.deepEqual(await importar(),imported);
   await assert.rejects(importar({...snapshot,permissionRef:'otra'}),/catálogo distinto/);
   assert.equal((await estado()).catalogReady,true);await reset();
@@ -177,8 +223,8 @@ try {
   assert.equal((await query("select balance_cents::text cash from public.teams where id=$1",[teams[16].team]))[0].cash,'0');
   assert.equal((await query("select initial_wealth_cents::text wealth from public.seasons where id=$1",[otherSeason]))[0].wealth,'7000000000');
   for(const role of ['anon','authenticated','service_role','macroliga_runner']) {
-    const f=(await query("select has_function_privilege($1,'public.macroliga_admin_aplicar_reparto(uuid,uuid)','execute') allowed,has_table_privilege($1,'app_private.admin_repartos','SELECT') readable,has_function_privilege($1,'public.macroliga_mercado_visible(uuid)','EXECUTE') market,has_function_privilege($1,'app_private.seleccionar_mercado_variado(uuid,text,uuid[],uuid[])','EXECUTE') selector,has_function_privilege($1,'public.macroliga_clasificacion(uuid)','EXECUTE') standings",[role]))[0];
-    assert.deepEqual(f,{allowed:role==='authenticated',readable:false,market:role==='authenticated',selector:false,standings:role==='authenticated'});
+    const f=(await query("select has_function_privilege($1,'public.macroliga_admin_aplicar_reparto(uuid,uuid)','execute') allowed,has_function_privilege($1,'public.macroliga_admin_iniciar_todo(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid)','execute') combined,has_function_privilege($1,'app_private.iniciar_todo_propietario(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid)','execute') owner,has_table_privilege($1,'app_private.admin_repartos','SELECT') readable,has_function_privilege($1,'public.macroliga_mercado_visible(uuid)','EXECUTE') market,has_function_privilege($1,'app_private.seleccionar_mercado_variado(uuid,text,uuid[],uuid[])','EXECUTE') selector,has_function_privilege($1,'public.macroliga_clasificacion(uuid)','EXECUTE') standings",[role]))[0];
+    assert.deepEqual(f,{allowed:role==='authenticated',combined:role==='authenticated',owner:false,readable:false,market:role==='authenticated',selector:false,standings:role==='authenticated'});
   }
   await login(1);
   const actual=await visible();assert.equal(actual.length,15);assert.ok(actual.every(x=>x.estado==='draft'));
@@ -199,5 +245,6 @@ try {
   await reset();
   console.log('PASS clasificación: 16 managers a cero antes del reparto; valor de plantillas tras reparto; puntos confirmados, empate y división aislada');
   await assert.rejects(db.exec(await sql(rollback)),/requiere un plan/);await db.exec('rollback');
+  await assert.rejects(db.exec(await sql(coreRollback)),/requiere un plan/);await db.exec('rollback');
   console.log('PASS datos obsoletos, rollback tardío, aplicación idempotente, 15 lotes en borrador, sin pujas ni activación; división ajena intacta');
 } finally {await db.close();}

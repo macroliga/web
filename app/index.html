@@ -185,7 +185,7 @@
               <label for="admin-file">Lote JSON autorizado de jugadores, valores y puntos</label>
               <input id="admin-file" type="file" accept=".json,application/json" required>
               <label><input type="checkbox" id="admin-source-confirm" required> Dispongo de autorización para utilizar estos datos.</label>
-              <button type="submit">Cargar catálogo</button>
+              <button type="submit">Cargar solo catálogo</button>
             </form>
             <form id="admin-form" hidden>
               <h3>2. Patrimonio y jugadores por equipo</h3>
@@ -201,7 +201,11 @@
               </div>
               <label for="admin-date">Fecha prevista del primer mercado (borrador)</label>
               <input id="admin-date" type="date" required>
-              <button type="submit">Simular reparto</button>
+              <div id="admin-combined-section" hidden>
+                <p>Se reservarán 15 futbolistas para el mercado antes del reparto. Si falla el equilibrio o falta un dato, no se guardará nada. No se abrirán pujas.</p>
+                <label><input type="checkbox" id="admin-combined-confirm"> Confirmo el arranque completo de los 16 equipos con estos parámetros.</label>
+              </div>
+              <button type="submit" id="admin-form-submit">Simular reparto</button>
             </form>
             <div id="admin-preview" hidden>
               <h3>3. Revisar reparto</h3><p id="admin-summary"></p>
@@ -228,6 +232,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=15"></script>
+  <script type="module" src="./app.js?v=16"></script>
 </body>
 </html>

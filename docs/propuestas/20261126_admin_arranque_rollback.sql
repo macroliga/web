@@ -5,12 +5,10 @@ do $$ begin
     raise exception 'La reversión tras importar o repartir requiere un plan de corrección de datos aprobado';
   end if;
 end; $$;
+drop function public.macroliga_admin_iniciar_todo(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid);
 drop function public.macroliga_admin_aplicar_reparto(uuid,uuid);
 drop function public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date);
 drop function public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb);
 drop function public.macroliga_admin_arranque_estado(uuid);
-drop function app_private.admin_huella(uuid);
-drop function app_private.admin_arranque_vacio(uuid);
 drop function app_private.admin_exigir(uuid);
-drop table app_private.admin_repartos;
 commit;

@@ -1,7 +1,7 @@
-import { crearCliente } from './api.mjs?v=15';
+import { crearCliente } from './api.mjs?v=16';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
 import { crearPanelCatalogo } from './catalogo.mjs?v=14';
-import { crearPanelAdmin } from './admin.mjs?v=14';
+import { crearPanelAdmin } from './admin.mjs?v=16';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,

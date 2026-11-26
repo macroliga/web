@@ -1,28 +1,20 @@
--- PROPUESTA, NO DESPLEGADA. Alternativa al arranque combinado anterior.
--- Exclusivamente macroliga-piloto. Catálogo global inicial, reparto por división.
--- Requiere catálogo privado y 202611260006_mercado_variado_lecturas.sql.
+-- Núcleo privado de arranque combinado instalado en macroliga-piloto.
 begin;
 create table app_private.admin_repartos (
   id uuid primary key default gen_random_uuid(),
   division_id uuid not null references public.divisions(id),
-  actor uuid not null references public.managers(id),
+  actor uuid references public.managers(id),
   fingerprint text not null,
   plan jsonb not null,
   expires_at timestamptz not null default (now()+interval '30 minutes'),
-  applied jsonb
+  applied jsonb,
+  combined_key uuid,
+  combined_hash text,
+  unique(division_id,combined_key),
+  check((combined_key is null)=(combined_hash is null))
 );
 alter table app_private.admin_repartos enable row level security;
 revoke all on app_private.admin_repartos from public,anon,authenticated,service_role,macroliga_runner;
-
-create function app_private.admin_exigir(p_division uuid) returns uuid
-language plpgsql security invoker set search_path='' as $$
-declare v_actor uuid;
-begin
-  select m.id into v_actor from public.managers m join public.teams t on t.manager_id=m.id
-    where m.auth_user_id=auth.uid() and m.is_admin and t.status='active' and t.division_id=p_division;
-  if not found then raise exception 'Acceso de administración denegado' using errcode='42501'; end if;
-  return v_actor;
-end; $$;
 
 create function app_private.admin_arranque_vacio(p_division uuid) returns void
 language plpgsql security invoker set search_path='' as $$
@@ -38,7 +30,6 @@ begin
     raise exception 'El reparto exige 16 equipos activos y vacíos, temporada en borrador y ningún mercado';
   end if;
 end; $$;
-
 create function app_private.admin_huella(p_division uuid) returns text
 language sql stable security invoker set search_path='' as $$
  select encode(sha256(convert_to(jsonb_build_array(
@@ -49,33 +40,8 @@ language sql stable security invoker set search_path='' as $$
    (select digest from app_private.catalogo_comuniazo_runs order by sport_day desc limit 1)
  )::text,'UTF8')),'hex');
 $$;
-
-create function public.macroliga_admin_arranque_estado(p_division uuid) returns jsonb
-language plpgsql security definer set search_path='' as $$
-begin
-  perform app_private.admin_exigir(p_division);
-  return (select jsonb_build_object('teamCount',(select count(*) from public.teams where division_id=p_division),
-    'catalogCount',(select count(*) from public.players),'catalogReady',exists(select 1 from app_private.catalogo_comuniazo_runs where season_id=s.id),
-    'wealthCents',s.initial_wealth_cents::text,'maxRoster',d.max_roster,'season',s.code,'seasonStatus',s.status,
-    'initialized',exists(select 1 from public.roster_ownership where division_id=p_division),
-    'marketPrepared',exists(select 1 from public.market_cycles where division_id=p_division))
-    from public.divisions d join public.seasons s on s.id=d.season_id where d.id=p_division);
-end; $$;
-
-create function public.macroliga_admin_importar_catalogo(p_division uuid,p_catalogo jsonb,p_puntos jsonb default null) returns jsonb
-language plpgsql security definer set search_path='' as $$
-declare v_actor uuid; v_season uuid;
-begin
- v_actor:=app_private.admin_exigir(p_division);
- select season_id into strict v_season from public.divisions where id=p_division;
- -- Mismo núcleo de propietario que las descargas. No hay dos rutas de escritura.
- return app_private.importar_catalogo_comuniazo(v_season,p_catalogo,p_puntos,v_actor);
-end; $$;
-
--- Simulación: 24 muestras deterministas, asignación descendente al equipo
--- menos valorado por posición y optimización posterior por permutas.
-create function public.macroliga_admin_simular_reparto(p_division uuid,p_wealth bigint,p_slots jsonb,p_min_cash bigint,p_seed text,p_market_date date) returns jsonb
-language plpgsql security definer set search_path='' as $$
+create function app_private.admin_simular_reparto_core(p_actor uuid,p_division uuid,p_wealth bigint,p_slots jsonb,p_min_cash bigint,p_seed text,p_market_date date) returns jsonb
+language plpgsql security invoker set search_path='' as $$
 declare
  v_actor uuid; v_season uuid; v_config_wealth bigint; v_max int; v_tz text; v_budget bigint;
  v_slots int[]; v_size int; v_positions text[]:=array['GK','DEF','MID','FWD'];
@@ -89,7 +55,7 @@ declare
  v_original_spread bigint;
  v_alloc jsonb:='[]'; v_market jsonb; v_plan jsonb; v_preview uuid; v_open timestamptz;
 begin
- v_actor:=app_private.admin_exigir(p_division);
+ v_actor:=p_actor;
  select d.season_id,s.initial_wealth_cents,d.max_roster,d.timezone into strict v_season,v_config_wealth,v_max,v_tz
    from public.divisions d join public.seasons s on s.id=d.season_id where d.id=p_division for update of d,s;
  lock table public.players in share mode;
@@ -213,25 +179,24 @@ begin
    'rosterSpreadCents',v_best_spread::text,'greedySpreadCents',v_original_spread::text,'allocations',v_alloc,'marketPlayers',v_market,'seed',p_seed);
  -- La simulación no cambia plantillas, patrimonio ni mercado. Solo guarda
  -- una propuesta privada, inmutable para el cliente y caducable.
- delete from app_private.admin_repartos where actor=v_actor and division_id=p_division and applied is null;
+ delete from app_private.admin_repartos where actor is not distinct from v_actor and division_id=p_division and applied is null;
  insert into app_private.admin_repartos(division_id,actor,fingerprint,plan)
  values(p_division,v_actor,app_private.admin_huella(p_division),v_plan) returning id into v_preview;
  return v_plan||jsonb_build_object('previewId',v_preview);
 end; $$;
-
-create function public.macroliga_admin_aplicar_reparto(p_division uuid,p_preview uuid) returns jsonb
-language plpgsql security definer set search_path='' as $$
+create function app_private.admin_aplicar_reparto_core(p_actor uuid,p_division uuid,p_preview uuid) returns jsonb
+language plpgsql security invoker set search_path='' as $$
 declare
  v_actor uuid; v_rec app_private.admin_repartos%rowtype; v_plan jsonb; v_season uuid; v_tz text;
  v_team jsonb; v_player jsonb; v_team_id uuid; v_wealth bigint; v_cash bigint; v_total bigint;
  v_market uuid; v_date date; v_open timestamptz; v_close timestamptz; v_publish timestamptz; v_result jsonb; v_old_wealth bigint;
 begin
- v_actor:=app_private.admin_exigir(p_division);
+ v_actor:=p_actor;
  select d.season_id,d.timezone,s.initial_wealth_cents into strict v_season,v_tz,v_old_wealth
  from public.divisions d join public.seasons s on s.id=d.season_id where d.id=p_division for update of d,s;
  lock table public.players in share mode;
  perform 1 from public.teams where division_id=p_division order by id for update;
- select * into v_rec from app_private.admin_repartos where id=p_preview and division_id=p_division and actor=v_actor for update;
+ select * into v_rec from app_private.admin_repartos where id=p_preview and division_id=p_division and actor is not distinct from v_actor for update;
  if not found then raise exception 'Simulación inexistente o ajena' using errcode='42501'; end if;
  if v_rec.applied is not null then return v_rec.applied;end if;
  perform app_private.admin_arranque_vacio(p_division);
@@ -273,15 +238,69 @@ begin
     'marketId',v_market,'marketStatus','draft','marketPlayers',15,'wealthCents',v_wealth::text);
  update app_private.admin_repartos set applied=v_result where id=p_preview;
  insert into public.admin_audit(actor_manager_id,action,target_type,target_id,reason,before_data,after_data)
- values(v_actor,'initial_distribution','division',p_division,'Reparto confirmado; mercado en borrador',jsonb_build_object('wealthCents',v_old_wealth::text),v_result);
+ values(v_actor,'initial_distribution','division',p_division,case when v_actor is null then 'Arranque por operador propietario; mercado en borrador' else 'Reparto confirmado; mercado en borrador' end,jsonb_build_object('wealthCents',v_old_wealth::text),v_result);
  return v_result;
 end; $$;
-
-revoke all on function app_private.admin_exigir(uuid),app_private.admin_arranque_vacio(uuid),app_private.admin_huella(uuid)
+create function app_private.admin_iniciar_todo_core(p_actor uuid,
+ p_division uuid,p_catalogo jsonb,p_puntos jsonb,p_wealth bigint,p_slots jsonb,
+ p_min_cash bigint,p_market_date date,p_request uuid
+) returns jsonb
+language plpgsql security invoker set search_path='' as $$
+declare
+ v_actor uuid;v_season uuid;v_hash text;v_prior app_private.admin_repartos%rowtype;
+ v_import jsonb;v_plan jsonb;v_result jsonb;v_preview uuid;v_spread bigint;
+begin
+ v_actor:=p_actor;
+ if p_request is null or jsonb_typeof(p_puntos) is distinct from 'array'
+    or jsonb_typeof(p_catalogo->'players') is distinct from 'array' then
+   raise exception 'Se requiere una clave de arranque y un lote completo de catálogo y puntos';
+ end if;
+ if jsonb_array_length(p_puntos) not between 490 and 20000
+    or jsonb_array_length(p_catalogo->'players') not between 490 and 20000 then
+   raise exception 'Cobertura inválida del lote combinado';end if;
+ -- Mismo orden de adquisición de bloqueos que el importador global.
+ perform 1 from public.divisions order by id for update;
+ select season_id into strict v_season from public.divisions where id=p_division;
+ v_hash:=encode(sha256(convert_to(jsonb_build_array(p_catalogo,p_puntos,p_wealth,p_slots,p_min_cash,p_market_date)::text,'UTF8')),'hex');
+ select * into v_prior from app_private.admin_repartos where division_id=p_division and combined_key=p_request for update;
+ if found then
+   if v_prior.actor is distinct from v_actor or v_prior.combined_hash is distinct from v_hash or v_prior.applied is null then
+      raise exception 'Clave de arranque ya utilizada con otra petición' using errcode='22023';end if;
+   return v_prior.applied;
+ end if;
+ perform app_private.admin_arranque_vacio(p_division);
+ -- El arranque combinado no es una segunda descarga global ni una puesta a
+ -- cero: solo acepta la primera importación del piloto sin datos previos.
+ if exists(select 1 from app_private.catalogo_comuniazo_runs) or exists(select 1 from public.players)
+    or exists(select 1 from public.roster_ownership) or exists(select 1 from public.market_cycles)
+    or exists(select 1 from public.wallet_entries) or exists(select 1 from public.transfer_operations)
+ then raise exception 'El catálogo o la economía ya existen; usar el flujo separado sin reiniciar';end if;
+ v_import:=app_private.importar_catalogo_comuniazo(v_season,p_catalogo,p_puntos,v_actor);
+ if (v_import->>'active')::int is distinct from (v_import->>'accumulatedPoints')::int then
+    raise exception 'El lote no contiene todos los puntos de jugadores activos';end if;
+ v_plan:=app_private.admin_simular_reparto_core(v_actor,p_division,p_wealth,p_slots,p_min_cash,p_request::text,p_market_date);
+ v_preview:=(v_plan->>'previewId')::uuid;
+ v_spread:=(v_plan->>'rosterSpreadCents')::bigint;
+ -- Sin revisión intermedia se exige que la diferencia de plantillas sea
+ -- <=1% del patrimonio. Si no se logra, se revierte también la importación.
+ if v_spread is null or v_spread>p_wealth/100 then
+   raise exception 'Diferencia de plantillas superior al 1%% del patrimonio; ajustar configuración y simular';
+ end if;
+ v_result:=app_private.admin_aplicar_reparto_core(v_actor,p_division,v_preview)
+   ||jsonb_build_object('catalog',v_import,'rosterSpreadCents',v_spread::text,'requestId',p_request);
+ update app_private.admin_repartos set combined_key=p_request,combined_hash=v_hash,applied=v_result where id=v_preview;
+ return v_result;
+end; $$;
+create function app_private.iniciar_todo_propietario(
+ p_division uuid,p_catalogo jsonb,p_puntos jsonb,p_wealth bigint,p_slots jsonb,
+ p_min_cash bigint,p_market_date date,p_request uuid
+) returns jsonb language sql security invoker set search_path='' as $$
+ select app_private.admin_iniciar_todo_core(null::uuid,p_division,p_catalogo,p_puntos,p_wealth,p_slots,p_min_cash,p_market_date,p_request);
+$$;
+revoke all on function app_private.admin_arranque_vacio(uuid),app_private.admin_huella(uuid),
+ app_private.admin_simular_reparto_core(uuid,uuid,bigint,jsonb,bigint,text,date),
+ app_private.admin_aplicar_reparto_core(uuid,uuid,uuid),
+ app_private.admin_iniciar_todo_core(uuid,uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid),
+ app_private.iniciar_todo_propietario(uuid,jsonb,jsonb,bigint,jsonb,bigint,date,uuid)
  from public,anon,authenticated,service_role,macroliga_runner;
-revoke all on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb),
- public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date),public.macroliga_admin_aplicar_reparto(uuid,uuid)
- from public,anon,authenticated,service_role,macroliga_runner;
-grant execute on function public.macroliga_admin_arranque_estado(uuid),public.macroliga_admin_importar_catalogo(uuid,jsonb,jsonb),
- public.macroliga_admin_simular_reparto(uuid,bigint,jsonb,bigint,text,date),public.macroliga_admin_aplicar_reparto(uuid,uuid) to authenticated;
 commit;

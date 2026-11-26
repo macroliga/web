@@ -2,7 +2,7 @@
 // Nunca se usa la clave service_role. La identidad se valida en Supabase.
 import { refreshValido } from './session.mjs?v=10';
 
-const ADMIN = new Set(['macroliga_admin_arranque_estado','macroliga_admin_importar_catalogo','macroliga_admin_simular_reparto','macroliga_admin_aplicar_reparto']);
+const ADMIN = new Set(['macroliga_admin_arranque_estado','macroliga_admin_importar_catalogo','macroliga_admin_simular_reparto','macroliga_admin_aplicar_reparto','macroliga_admin_iniciar_todo']);
 const LECTURAS = new Set(['macroliga_mi_equipo', 'macroliga_plantilla_equipo', 'macroliga_catalogo_division', 'macroliga_historial_traspasos','macroliga_mercado_visible','macroliga_clasificacion']);
 
 function extraerSesion(data) {
