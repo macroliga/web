@@ -29,7 +29,7 @@ BEGIN
     (tc,'test-inicial-'||tc,'initial',100000000);
   insert into public.players(id,name,position,current_market_value_cents) values
     (p1,'Futbolista Uno','DEF',400000000),
-    (p2,'Futbolista Dos','MED',100000000);
+    (p2,'Futbolista Dos','MID',100000000);
   insert into public.roster_ownership(division_id,player_id,owner_kind,team_id) values
     (d1,p1,'team',ta),(d2,p2,'team',tc);
 
