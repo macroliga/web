@@ -82,7 +82,10 @@ function clienteAdministrativo(clave) {
       return id;
     },
     async borrarTabla(tabla, id) {
-      await solicitar('DELETE', `/rest/v1/${tabla}?id=eq.${encodeURIComponent(id)}`);
+      const borradas = await solicitar('DELETE', `/rest/v1/${tabla}?id=eq.${encodeURIComponent(id)}`);
+      if (!Array.isArray(borradas) || borradas.length !== 1 || borradas[0].id !== id) {
+        throw new Error(`Rollback sin confirmacion para ${tabla}`);
+      }
     },
     async borrarUsuario(id) {
       await solicitar('DELETE', `/auth/v1/admin/users/${encodeURIComponent(id)}`);
