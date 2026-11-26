@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=6">
+  <link rel="stylesheet" href="./styles.css?v=7">
 </head>
 <body>
   <div class="shell">
@@ -37,10 +37,17 @@
           <select id="manager-select" name="entrenador" required>
             <option value="">Selecciona tu nombre</option>
           </select>
+          <!-- Campo compatible con gestores de contraseñas: correo ficticio interno. -->
+          <input id="login-username" class="autofill-username" type="text"
+            name="username" autocomplete="username" tabindex="-1" aria-hidden="true">
           <label for="password">PIN de 6 cifras</label>
           <input id="password" name="pin" type="password" autocomplete="current-password"
             inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
             placeholder="••••••" required>
+          <label class="remember-pin" for="remember-pin">
+            <input id="remember-pin" type="checkbox" checked>
+            <span>Guardar mi PIN en el gestor de contraseñas del móvil</span>
+          </label>
           <button type="submit" id="login-button" class="primary-button">Entrar en MACROLIGA</button>
         </form>
         <p id="login-message" class="login-message" role="status" aria-live="polite">
@@ -133,6 +140,6 @@
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=6"></script>
+  <script type="module" src="./app.js?v=7"></script>
 </body>
 </html>
