@@ -4,11 +4,13 @@ Proyecto fantasy independiente, preparado para el piloto de 14–16 managers y p
 
 **Estado comprobado el 25/11/2026:** base de datos de ensayo instalada en Supabase **`macroliga-piloto`**, proyecto `xuwjbfnhvvbdargcohfe`. No hay managers reales ni cuentas creadas.
 
+**Avance del 26/11/2026:** instaladas en `macroliga-piloto` dos RPC de lectura segura para el equipo propio y las plantillas de rivales de la misma división, ensayadas con identidades ficticias y sin datos persistentes. Añadida una primera portada PWA en `app/`, **todavía sin publicar ni configurar el acceso real**. Se ha configurado una comprobación de código en GitHub Actions, pendiente de confirmar su primera ejecución correcta. Véase [la entrega del 26/11](docs/PRIMERA_PWA_Y_LECTURAS_SEGURAS_2026-11-26.md).
+
 **Recursos protegidos, solo lectura:** repositorio `comuniolaviana/web`, Supabase «Comunio Laviana» y su aplicación. No se comparten claves, datos operativos ni automatizaciones.
 
 ## Qué hay realmente instalado
 
-- **Once migraciones** aplicadas en Supabase **macroliga-piloto** (`202611250001` a `202611250011`).
+- **Doce migraciones** aplicadas en Supabase **macroliga-piloto** (once del 25/11 y una de lecturas del 26/11).
 - 33 tablas públicas con seguridad por filas activada; se han añadido tablas privadas para políticas económicas e instantáneas de ganadores en el esquema `app_private`.
 - Tres funciones RPC de pujas (`public.macroliga_presentar_puja`, `public.macroliga_retirar_puja`, `public.macroliga_mis_pujas`) controladas por la identidad del manager.
 - Motor económico privado: ventas al Computer y al Equipo Malo, cierre con congelación de ganadores, publicación atómica y aceptación protegida de ofertas entre managers.
