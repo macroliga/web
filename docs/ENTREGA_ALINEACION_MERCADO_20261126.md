@@ -25,3 +25,9 @@ Script de alta contrastado: scripts/sql/configurar_jornada14_20261127.sql. No se
 - Confirmar y automatizar actualización de calendario (aplazamientos y cambios), formaciones reglamentarias definitivas, validación de titularidad al cierre, captura de saldo de inicio y puntos por partido; liquidación idempotente de jornada y premios solo una vez validados.
 - Generar ofertas de Computer a jugadores en venta y gestionar bajas de competición con último valor; Equipo Malo, cláusulas. No se ha inventado una fórmula ni activado estas operaciones.
 - Mercado: apertura real/política de ventas y cierre/publicación solo tras autorización; no se activa en este cambio.
+
+## Publicación y verificación final
+- Interfaz: rama fix/mercado-operativo y main, commit 25f59dcfb3e395f06037a500d3da86ac1249dba0. GitHub Pages: https://macroliga.github.io/web/app/?release=21 — versión 21 observada en navegador después de propagación.
+- 141/141 pruebas Node y comprobaciones de sintaxis; Chromium/Pixel 7 con Auth y RPC ficticias pasó, incluyendo guardado oficial y cierre de jornada, borrador, puja/retirada, anuncios, sesión persistente, actualización y logout. Sin login ni operación real en navegador alojado.
+- RPC reales bajo rol authenticated y transacción de solo lectura: jornada 14 editable, diez partidos, 15 jugadores propios y 15 lotes; pujas y ventas cerradas. No se expusieron identidades, claves ni cantidades privadas.
+- Estado siguiente: preparar captura de titularidad/saldo y puntuación por partido, fuente y actualización de calendario; validar las reglas de formaciones. No iniciar liquidaciones/premios ni habilitar mercado sin autorización.
