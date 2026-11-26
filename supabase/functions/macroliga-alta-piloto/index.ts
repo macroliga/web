@@ -16,10 +16,6 @@ const CUENTAS = NOMBRES.map((nombre, indice) => ({
   email: "demo" + String(indice + 1).padStart(2, "0") + "@macroliga.invalid",
   equipo: "Equipo de " + nombre
 }));
-const TABLAS_VACIAS = [
-  "competitions", "seasons", "divisions", "managers", "teams",
-  "wallet_entries", "roster_ownership"
-];
 const ORIGENES = new Set(["https://supabase.com", "https://app.supabase.com"]);
 
 function cabeceras(origin) {
@@ -85,13 +81,12 @@ async function consultar(path, method, body, key, extraHeaders) {
   return raw ? JSON.parse(raw) : null;
 }
 async function vacioAntesDeCrear(key) {
-  const auth = await consultar("/auth/v1/admin/users?page=1&per_page=1", "GET", undefined, key);
-  if (!Array.isArray(auth?.users)) throw new Error("No se pudo verificar Auth");
-  if (auth.users.length) throw new Error("Auth ya contiene usuarios: alta bloqueada");
-  for (const table of TABLAS_VACIAS) {
-    const rows = await consultar("/rest/v1/" + table + "?select=id&limit=1", "GET", undefined, key);
-    if (!Array.isArray(rows)) throw new Error("No se pudo verificar " + table);
-    if (rows.length) throw new Error("Tabla " + table + " no vacia: alta bloqueada");
+  // Una RPC SECURITY DEFINER acotada al servicio comprueba todas las tablas
+  // y Auth sin conceder SELECT directo a service_role.
+  const estado = await consultar(
+    "/rest/v1/rpc/macroliga_piloto_estado_alta", "POST", {}, key);
+  if (!estado || estado.libre !== true) {
+    throw new Error("MACROLIGA ya contiene usuarios o datos de juego: alta bloqueada");
   }
 }
 function generarPines() {
@@ -108,25 +103,24 @@ function generarPines() {
   }
   return result;
 }
-function uno(rows, label) {
-  if (!Array.isArray(rows) || rows.length !== 1 || !rows[0]?.id) {
-    throw new Error("Fallo al crear " + label);
+async function rechazarLecturaDirecta(ruta, keyPublica, jwt) {
+  const response = await fetch(URL + ruta, {
+    method: "GET",
+    headers: {
+      "apikey": keyPublica,
+      "Authorization": "Bearer " + jwt,
+      "Accept": "application/json"
+    },
+    signal: AbortSignal.timeout(18000)
+  });
+  // Un 403 es correcto: las tablas privadas NO conceden SELECT a managers.
+  if (response.status === 403 || response.status === 404) return;
+  if (!response.ok) {
+    throw new Error("Fallo al comprobar privacidad: HTTP " + response.status);
   }
-  return rows[0].id;
-}
-async function insertar(tabla, body, key) {
-  return uno(await consultar("/rest/v1/" + tabla, "POST", body, key), tabla);
-}
-async function eliminar(op, key) {
-  if (op.tipo === "auth") {
-    await consultar("/auth/v1/admin/users/" + encodeURIComponent(op.id),
-      "DELETE", undefined, key);
-    return;
-  }
-  const response = await consultar("/rest/v1/" + op.tabla + "?id=eq." +
-    encodeURIComponent(op.id), "DELETE", undefined, key);
-  if (!Array.isArray(response) || response.length !== 1 || response[0].id !== op.id) {
-    throw new Error("Rollback incompleto en " + op.tabla);
+  const filas = await response.json();
+  if (!Array.isArray(filas) || filas.length > 0) {
+    throw new Error("La tabla privada ha quedado expuesta");
   }
 }
 async function iniciarYConsultar(cuenta, pin, keyPublica) {
@@ -143,91 +137,83 @@ async function iniciarYConsultar(cuenta, pin, keyPublica) {
   if (equipo.nombre_equipo !== cuenta.equipo || !equipo.equipo_id) {
     throw new Error("La identidad Auth no corresponde con su equipo");
   }
-  const directo = await consultar("/rest/v1/teams?select=id&limit=1",
-    "GET", undefined, keyPublica, {Authorization: "Bearer " + jwt});
-  if (!Array.isArray(directo) || directo.length !== 0) {
-    throw new Error("Se ha podido leer la tabla privada teams");
-  }
-  const pujas = await consultar("/rest/v1/bids?select=id&limit=1",
-    "GET", undefined, keyPublica, {Authorization: "Bearer " + jwt});
-  if (!Array.isArray(pujas) || pujas.length !== 0) {
-    throw new Error("Se ha podido leer la tabla privada bids");
-  }
+  await rechazarLecturaDirecta("/rest/v1/teams?select=id&limit=1", keyPublica, jwt);
+  await rechazarLecturaDirecta("/rest/v1/bids?select=id&limit=1", keyPublica, jwt);
+  await rechazarLecturaDirecta("/rest/v1/wallet_entries?select=id&limit=1", keyPublica, jwt);
   return equipo;
 }
 async function alta(key, keyPublica) {
-  const creados = [];
   const pines = generarPines();
+  const idsAuth = [];
+  let divisionId = null;
   let limpiezaPendiente = false;
+  let solicitudSinConfirmar = false;
   try {
-    const competitionId = await insertar("competitions", {
-      code: "MACROLIGA_PILOTO_INVIERNO_2026", name: "MACROLIGA · Piloto de invierno"
-    }, key);
-    creados.push({tipo: "tabla", tabla: "competitions", id: competitionId});
-
-    const seasonId = await insertar("seasons", {
-      competition_id: competitionId, code: "2026_27",
-      name: "Liga piloto invierno 2026/27", status: "draft",
-      initial_wealth_cents: 7000000000
-    }, key);
-    creados.push({tipo: "tabla", tabla: "seasons", id: seasonId});
-
-    const divisionId = await insertar("divisions", {
-      season_id: seasonId, code: "PILOTO", name: "División piloto",
-      max_roster: 16, max_debt_percent: 25,
-      points_eur_cents: 1000000, timezone: "Europe/Madrid"
-    }, key);
-    creados.push({tipo: "tabla", tabla: "divisions", id: divisionId});
+    solicitudSinConfirmar = true;
+    const preparado = await consultar(
+      "/rest/v1/rpc/macroliga_piloto_preparar_alta", "POST", {}, key);
+    solicitudSinConfirmar = false;
+    if (!preparado?.division_id) throw new Error("No se obtuvo identificador de la division");
+    divisionId = preparado.division_id;
 
     for (let i = 0; i < CUENTAS.length; i++) {
       const c = CUENTAS[i];
+      solicitudSinConfirmar = true;
       const authUser = await consultar("/auth/v1/admin/users", "POST", {
         email: c.email, password: pines[i], email_confirm: true,
         user_metadata: {demo: true, entrenador_historico: c.nombre}
       }, key);
+      solicitudSinConfirmar = false;
       const authId = authUser?.id || authUser?.user?.id;
-      if (!authId) throw new Error("Auth no devolvio identificador de usuario");
-      creados.push({tipo: "auth", id: authId});
-
-      const managerId = await insertar("managers", {
-        auth_user_id: authId, display_name: c.nombre, is_admin: false
-      }, key);
-      creados.push({tipo: "tabla", tabla: "managers", id: managerId});
-
-      const teamId = await insertar("teams", {
-        division_id: divisionId, manager_id: managerId,
-        team_name: c.equipo, balance_cents: 0, status: "active"
-      }, key);
-      creados.push({tipo: "tabla", tabla: "teams", id: teamId});
+      if (!authId) throw new Error("Auth no devolvio identificador");
+      idsAuth.push(authId);
+      const vinculo = await consultar(
+        "/rest/v1/rpc/macroliga_piloto_vincular_entrenador", "POST",
+        {p_division_id: divisionId, p_auth_id: authId, p_numero: i + 1}, key);
+      if (!vinculo?.team_id) throw new Error("No se ha vinculado el equipo ficticio");
     }
 
-    // Verificar dos logins Auth reales y que cada JWT ve solamente su equipo.
+    // Dos logins reales verifican independencia de perfiles y credenciales.
     const a = await iniciarYConsultar(CUENTAS[0], pines[0], keyPublica);
     const b = await iniciarYConsultar(CUENTAS[1], pines[1], keyPublica);
     if (a.equipo_id === b.equipo_id || a.division_id !== b.division_id) {
-      throw new Error("Fallo al separar identidades de prueba");
+      throw new Error("Fallo al separar identidades");
     }
     return {
-      ok: true,
-      creados: 16,
-      comprobaciones: "Dos inicios de sesion reales y perfiles privados comprobados",
-      aviso: "GUARDA AHORA LOS PIN EN UN LUGAR PRIVADO; ESTA RESPUESTA NO SE GUARDA EN LA FUNCION",
+      ok: true, creados: 16,
+      comprobaciones: "Dos accesos reales y privacidad verificados",
+      aviso: "GUARDA LOS 16 PIN EN PRIVADO; NO ENVIES UNA CAPTURA NI CIERRES LA RESPUESTA ANTES DE GUARDARLOS",
       credenciales: CUENTAS.map((c, i) => ({
         entrenador: c.nombre, usuario: c.email, pin: pines[i]
       }))
     };
   } catch (e) {
-    for (const op of creados.reverse()) {
-      try { await eliminar(op, key); } catch { limpiezaPendiente = true; }
+    if (solicitudSinConfirmar) limpiezaPendiente = true;
+    // La eliminacion de equipos/managers se hace en una unica transaccion.
+    // El servidor Auth se limpia DESPUES, al quitar las referencias FK.
+    if (divisionId) {
+      try {
+        await consultar("/rest/v1/rpc/macroliga_piloto_revertir_alta",
+          "POST", {p_division_id: divisionId}, key);
+      } catch {
+        limpiezaPendiente = true;
+      }
     }
-    // No incluir los PIN, JWT ni el secreto en errores o registros.
+    for (const id of idsAuth.reverse()) {
+      try {
+        await consultar("/auth/v1/admin/users/" + encodeURIComponent(id),
+          "DELETE", undefined, key);
+      } catch {
+        limpiezaPendiente = true;
+      }
+    }
     return {
       ok: false,
       error: String(e?.message || "Fallo interno"),
       limpieza_completa: !limpiezaPendiente,
       instruccion: limpiezaPendiente
-        ? "No volver a ejecutar. Revisar el estado en Supabase antes de limpiar."
-        : "No se han conservado voluntariamente las cuentas creadas."
+        ? "NO REINTENTAR. Revisar y corregir primero el estado de Supabase."
+        : "Las operaciones creadas se han revertido. No se han devuelto PIN."
     };
   }
 }
