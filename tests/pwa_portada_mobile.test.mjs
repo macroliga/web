@@ -21,6 +21,8 @@ test('login privado separado de menús, requiere nombre y PIN', () => {
 test('saldo en cabecera, Mi equipo compacto y datos solo en su vista', () => {
   assert.match(html, /id="top-balance" hidden/);
   assert.match(html, /id="header-balance"/);
+  assert.match(html, /id="home-wealth"/);
+  assert.match(html, /id="team-wealth"/);
   assert.match(html, /class="team-shortcut" data-view="team"/);
   assert.match(html, /id="team-view"[^>]+hidden/);
   assert.match(app, /el\('header-balance'\)\.textContent = euros/);
@@ -31,6 +33,8 @@ test('cuatro accesos principales en 2 columnas y barra inferior de cinco', () =>
   assert.equal((html.match(/<button type="button" data-view="(home|rules|cup|standings|admin)"/g)||[]).length,5);
   assert.match(styles, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(html, /id="admin-nav" hidden/);
+  assert.match(app, /adminAutorizado=true;adminNav.hidden=false/);
   assert.match(styles, /env\(safe-area-inset-bottom/);
 });
 test('pantallas pendientes no simulan operaciones activas', () => {
@@ -39,7 +43,7 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v16/);
+  assert.match(worker, /macroliga-pwa-estatica-v17/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);

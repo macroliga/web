@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=12">
+  <link rel="stylesheet" href="./styles.css?v=13">
 </head>
 <body>
   <div class="shell">
@@ -66,6 +66,7 @@
             <span class="team-shortcut-copy">
               <small>MI EQUIPO</small>
               <strong id="team-short-name">Tu equipo</strong>
+              <small>Patrimonio <span id="home-wealth">—</span></small>
             </span>
             <span class="right-chevron" aria-hidden="true">›</span>
           </button>
@@ -84,7 +85,7 @@
             <button type="button" class="tile tile-market" data-view="market">
               <span class="tile-icon" aria-hidden="true">⚽</span>
               <span class="tile-label">MERCADO</span>
-              <small>En preparación</small>
+              <small>Jugadores e historial</small>
             </button>
             <button type="button" class="tile tile-bad" data-view="bad">
               <span class="tile-icon" aria-hidden="true">👹</span>
@@ -110,9 +111,11 @@
             <div class="figures">
               <div><span>Saldo</span><strong id="team-balance">—</strong></div>
               <div><span>Valor plantilla</span><strong id="team-value">—</strong></div>
+              <div><span>Patrimonio</span><strong id="team-wealth">—</strong></div>
               <div><span>Futbolistas</span><strong id="team-players">—</strong></div>
               <div><span>Margen de pujas</span><strong id="team-capacity">—</strong></div>
             </div>
+            <p id="team-refresh-status" role="status"></p>
             <div class="squad-section">
               <h3>Mi plantilla</h3>
               <ul id="roster-list" aria-live="polite"></ul>
@@ -225,13 +228,13 @@
           <button type="button" data-view="rules"><span aria-hidden="true">📖</span><small>Normas</small></button>
           <button type="button" data-view="cup"><span aria-hidden="true">🏆</span><small>Copa</small></button>
           <button type="button" data-view="standings"><span aria-hidden="true">📊</span><small>Clasificación</small></button>
-          <button type="button" data-view="admin"><span aria-hidden="true">⚙</span><small>Admin</small></button>
+          <button type="button" data-view="admin" id="admin-nav" hidden><span aria-hidden="true">⚙</span><small>Admin</small></button>
         </nav>
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=16"></script>
+  <script type="module" src="./app.js?v=17"></script>
 </body>
 </html>

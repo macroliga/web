@@ -1,7 +1,7 @@
 import { crearCliente } from './api.mjs?v=16';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
 import { crearPanelCatalogo } from './catalogo.mjs?v=14';
-import { crearPanelAdmin } from './admin.mjs?v=16';
+import { crearPanelAdmin } from './admin.mjs?v=17';
 import { euros } from './logic.mjs?v=10';
 import { cuentasDemostracion } from './entrenadores.mjs?v=10';
 import { recordarEntrenador, entrenadorRecordado, guardarSesion,
@@ -22,6 +22,8 @@ const teamView = el('team-view');
 const homeView = el('home-view');
 const sectionView = el('section-view');
 const topBalance = el('top-balance');
+const adminNav = el('admin-nav');
+const nav = document.querySelector('.bottom-nav');
 
 const SECCIONES = Object.freeze({
   clauses: ['🔨', 'Cláusulas', 'Las cláusulas estarán disponibles cuando termine la puesta a punto del piloto.'],
@@ -43,6 +45,8 @@ let refrescando = false;
 let sesionActual = null;
 let ultimoToken = null;
 let persistente = false;
+let equipoRevision = 0, adminRevision = 0, adminAutorizado = false;
+let vistaActual = 'home';
 const recovery = el('session-recovery');
 const retryButton = el('retry-session');
 const note = el('prototype-note');
@@ -51,13 +55,15 @@ const storage = (() => { try { return window.localStorage; } catch { return null
 
 const panelCatalogo = crearPanelCatalogo(el('market-catalog'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
-const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
+const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => void actualizarEquipo());
 
 function aviso(texto) {
   loginMessage.textContent = texto;
 }
 function cambiarVista(nombre) {
   if (!token) return;
+  if (nombre==='admin'&&!adminAutorizado) return;
+  vistaActual=nombre;
   const esInicio = nombre === 'home';
   homeView.hidden = !esInicio;
   teamView.hidden = nombre !== 'team';
@@ -82,15 +88,17 @@ function cambiarVista(nombre) {
   }
   if (nombre === 'market') void panelCatalogo?.show(); else panelCatalogo?.clear();
   if (nombre === 'standings') void panelClasificacion?.show(); else panelClasificacion?.clear();
+  if (nombre==='team'||nombre==='home') void actualizarEquipo();
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  divisionActual = null; identidadActual = null; panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
+  divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;adminAutorizado=false;adminNav.hidden=true;nav.classList.remove('has-admin'); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
-    'team-balance','team-value','team-players','team-capacity']) {
+    'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity']) {
     el(id).textContent = '—';
   }
   el('roster-list').replaceChildren();
+  el('team-refresh-status').textContent='';
 }
 function mostrarAcceso(recuperando = false) {
   pin.value = '';
@@ -112,6 +120,7 @@ function mostrarAplicacion() {
   topBalance.hidden = false;
   el('prototype-note').hidden = false;
   cambiarVista('home');
+  void comprobarAdmin();
 }
 function pintarPlantilla(jugadores) {
   const lista = el('roster-list');
@@ -152,9 +161,40 @@ function pintarEquipo(equipo, jugadores) {
   el('header-balance').textContent = euros(equipo.saldo_centimos);
   el('team-balance').textContent = euros(equipo.saldo_centimos);
   el('team-value').textContent = euros(equipo.valor_plantilla_centimos);
+  const patrimonio = Number(equipo.saldo_centimos)+Number(equipo.valor_plantilla_centimos);
+  el('team-wealth').textContent = euros(patrimonio);
+  el('home-wealth').textContent = euros(patrimonio);
   el('team-players').textContent = String(equipo.jugadores) + ' / 16';
   el('team-capacity').textContent = euros(equipo.margen_pujas_centimos);
   pintarPlantilla(jugadores);
+}
+
+// Estas consultas nunca renuevan, borran ni invalidan una sesión. Solo
+// actualizan datos de la identidad que inició la petición.
+async function actualizarEquipo(){
+  if(!token||!identidadActual)return;
+  const revision=++equipoRevision, sesion=intento, equipoId=identidadActual, division=divisionActual, jwt=token;
+  const valid=()=>revision===equipoRevision&&sesion===intento&&equipoId===identidadActual&&division===divisionActual&&Boolean(token);
+  try{
+    const {equipo,jugadores}=await consultarEquipo(jwt);
+    if(!valid()||equipo.equipo_id!==equipoId||equipo.division_id!==division)return;
+    pintarEquipo(equipo,jugadores);
+    el('team-refresh-status').textContent='';
+  }catch{
+    if(valid())el('team-refresh-status').textContent='No se pudo actualizar. Se muestran los últimos datos consultados.';
+  }
+}
+async function comprobarAdmin(){
+  if(!token||!divisionActual||!identidadActual)return;
+  const revision=++adminRevision, sesion=intento, equipoId=identidadActual, division=divisionActual, jwt=token;
+  const valid=()=>revision===adminRevision&&sesion===intento&&equipoId===identidadActual&&division===divisionActual&&Boolean(token);
+  try{
+    const result=await cliente.administrar('macroliga_admin_arranque_estado',{p_division:division},jwt);
+    if(!valid()||!result||typeof result.teamCount!=='number')return;
+    adminAutorizado=true;adminNav.hidden=false;nav.classList.add('has-admin');
+  }catch{
+    if(valid()){adminAutorizado=false;adminNav.hidden=true;nav.classList.remove('has-admin');if(vistaActual==='admin')cambiarVista('home');}
+  }
 }
 
 // El email ficticio no se solicita al usuario. Es el alias interno del nombre.
@@ -356,7 +396,7 @@ async function renovarSiCaduca() {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) void renovarSiCaduca();
 });
-window.addEventListener('online', () => void renovarSiCaduca());
+window.addEventListener('online', () => {void renovarSiCaduca();if(token){void actualizarEquipo();void comprobarAdmin();}});
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) void renovarSiCaduca();
 });

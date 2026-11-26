@@ -160,3 +160,20 @@ No se ha modificado el proyecto ni se han consultado recursos de Comunio Laviana
   no hay lote autorizado local ni evidencia nueva de autorización del
   proveedor. No se ha reutilizado catálogo de Comunio Laviana.
   El arranque real se realizará conjuntamente cuando se disponga del lote.
+
+## Integración final de la interfaz piloto
+- Administración oculta por defecto; se muestra únicamente después de que
+  la RPC autenticada de estado confirme el permiso del manager. Un 403 o
+  fallo de consulta no cierra sesión. No se confía en el nombre del selector.
+- Saldo y valor de plantilla se refrescan al navegar a Mi equipo/Inicio y
+  tras cambiar el estado desde administración. Patrimonio = saldo + valor
+  de plantilla, visible en la portada y Mi equipo. Los fallos no piden PIN;
+  se conserva la última lectura de esa identidad, y se descartan respuestas
+  tardías de una sesión anterior.
+- Interfaz estática v17, sesión mjs v10 sin cambios, caché solo estática.
+- Pruebas ejecutadas: 155/155 Node, check correcto, Chromium Pixel 7 con
+  diez etapas (incluye ocultación de administrador, permiso concedido por
+  API, arranque combinado ficticio, patrimonio actualizado, retirada del
+  permiso y nueve regresiones previas). No se usó ningún PIN real.
+- Entrega de interfaz para el piloto, sin crear/abrir ciclos ni importar
+  datos de prueba, no cambiar configuración ni persistencia de Auth.

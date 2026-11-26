@@ -11,7 +11,7 @@ export function configReparto(input,maxRoster=16) {
   if(!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw Error('Selecciona la fecha del primer mercado.');
   return {p_wealth:String(wealth*100000000),p_min_cash:String(cash*100000000),p_slots:slots,p_market_date:input.date,p_seed:input.seed};
 }
-export function crearPanelAdmin(root,contexto) {
+export function crearPanelAdmin(root,contexto,onChange=()=>{}) {
   if(!root) return null;
   const doc=root.ownerDocument;
   const el=id=>root.querySelector('#'+id);
@@ -81,7 +81,7 @@ export function crearPanelAdmin(root,contexto) {
       const args=await readLot(file);
       if(!visible(g,c))return;
       await call('macroliga_admin_importar_catalogo',args);
-      if(visible(g,c))await show();
+      if(visible(g,c)){onChange();await show();}
     } catch(e){if(visible(g,c))say(errorText(e));}finally{if(generation===g)locks(false);}
   });
   form.addEventListener('input',e=>{clearPlan();if(e.target!==el('admin-combined-confirm')){combinedRequest=null;el('admin-combined-confirm').checked=false;}});
@@ -101,7 +101,7 @@ export function crearPanelAdmin(root,contexto) {
         const lote=await readLot(file);if(!visible(g,c))return;
         const {p_seed,...config}=args;
         const result=await call('macroliga_admin_iniciar_todo',{...lote,...config,p_request:request});
-        if(visible(g,c)){await show();if(visible(g+1,c)&&!root.hidden&&state?.initialized)say('Arranque completo: '+result.teams+' equipos · '+result.marketPlayers+' futbolistas en el mercado en borrador · diferencia '+money(result.rosterSpreadCents)+'.');}
+        if(visible(g,c)){onChange();await show();if(visible(g+1,c)&&!root.hidden&&state?.initialized)say('Arranque completo: '+result.teams+' equipos · '+result.marketPlayers+' futbolistas en el mercado en borrador · diferencia '+money(result.rosterSpreadCents)+'.');}
       }catch(e){if(visible(g,c))say(errorText(e));}finally{if(generation===g)locks(false);}
       return;
     }
@@ -115,7 +115,7 @@ export function crearPanelAdmin(root,contexto) {
     locks(true);say('Confirmando reparto…');
     try {
       await call('macroliga_admin_aplicar_reparto',{p_preview:id});
-      if(visible(g,c))await show();
+      if(visible(g,c)){onChange();await show();}
     }catch(e){if(visible(g,c))say(errorText(e));}finally{if(generation===g)locks(false);}
   });
   return {show,clear};

@@ -70,7 +70,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .empty-state h2{font-size:20px;margin:0}
 .empty-state p{color:#617783;margin:0;font-size:13px;max-width:300px}
 .status-text{color:#718b95;font-size:11px;margin-top:7px}
-.bottom-nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:#fff;box-shadow:0 -4px 22px #00162038;padding:3px 5px calc(5px + env(safe-area-inset-bottom,0px));border-radius:15px 15px 0 0}
+.bottom-nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;box-shadow:0 -4px 22px #00162038;padding:3px 5px calc(5px + env(safe-area-inset-bottom,0px));border-radius:15px 15px 0 0}
 .bottom-nav button{min-width:0;min-height:51px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;border:0;background:transparent;color:#738491;border-radius:11px}
 .bottom-nav button>span{font-size:21px;line-height:1.15}
 .bottom-nav button small{font-size:10px;white-space:nowrap}
@@ -121,3 +121,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .standings-table th{font-size:11px;color:#586e7b}.standings-table th:nth-child(3),.standings-table th:nth-child(4),.standings-table td:nth-child(3),.standings-table td:nth-child(4){text-align:right;font-variant-numeric:tabular-nums}
 .standings-table td:nth-child(2){overflow-wrap:anywhere}.standings-table small{display:block;color:#586e7b;font-size:10px}
 .standings-table .my-standing{background:#e8f4f4;font-weight:700}
+
+.bottom-nav.has-admin{grid-template-columns:repeat(5,minmax(0,1fr))}
+#team-refresh-status{color:#586e7b;font-size:12px}
