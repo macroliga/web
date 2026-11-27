@@ -99,7 +99,7 @@
               <h2 id="news-title">Noticias</h2>
               <span>HOY</span>
             </div>
-            <p>Los movimientos y fichajes aparecerán aquí cuando abramos el mercado piloto.</p>
+            <div id="news-latest" aria-live="polite"></div><button type="button" class="team-text-link" data-view="news">Ver todas las noticias →</button>
           </section>
         </section>
 
@@ -137,7 +137,7 @@
 
         <section id="section-view" class="page-view detail-page" aria-labelledby="section-title" hidden>
           <button type="button" class="back-button" data-view="home">‹ Volver a Inicio</button>
-          <div class="detail-card empty-state" id="section-placeholder">
+          <div id="news-history" hidden aria-live="polite"></div><div class="detail-card empty-state" id="section-placeholder">
             <span id="section-icon" class="empty-icon" aria-hidden="true">⚽</span>
             <h2 id="section-title">Sección en preparación</h2>
             <p id="section-message">Estamos preparando esta parte del piloto.</p>
@@ -288,7 +288,7 @@
     <div class="release-info"><span>Aplicación piloto · versión 24</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=24"></script>
+  <script type="module" src="./app.js?v=25"></script>
 </body>
 </html>
 
