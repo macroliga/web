@@ -1,3 +1,4 @@
+import { crearPanelNoticias } from './noticias.mjs?v=25';
 import { crearCliente } from './api.mjs?v=24';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
 import { crearPanelCatalogo } from './catalogo.mjs?v=24';
@@ -61,50 +62,18 @@ const panelAlineacion = crearPanelAlineacion(el('lineup-panel'), () => ({client:
 const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();});
 
+const panelNoticias = crearPanelNoticias(el('news-latest'), el('news-history-list'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual, session:intento}));
+
 function aviso(texto) {
   loginMessage.textContent = texto;
-}
-let newsRevision=0;
-async function cargarNoticias(root, full=false) {
-  const revision=++newsRevision, division=divisionActual, identity=identidadActual, session=intento;
-  const valid=()=>revision===newsRevision&&division===divisionActual&&identity===identidadActual&&session===intento&&Boolean(token);
-  root.replaceChildren();
-  const status=document.createElement('p');status.textContent='Consultando fichajes…';root.append(status);
-  let cursor=null, busy=false, lastDay='', count=0;
-  const seen=new Set();
-  const dayFmt=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',dateStyle:'full'});
-  const timeFmt=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',timeStyle:'short'});
-  const more=document.createElement('button');more.type='button';more.textContent='Cargar noticias anteriores';
-  async function load(){
-    if(busy||!valid())return;busy=true;more.disabled=true;
-    try{
-      const limit=full?50:5;
-      const rows=await cliente.consultar('macroliga_historial_traspasos',{p_division_id:division,p_antes_fecha:cursor?.fecha??null,p_antes_id:cursor?.traspaso_id??null,p_limite:limit},token);
-      if(!valid())return;
-      if(!Array.isArray(rows)||rows.length>limit||rows.some(r=>!r.traspaso_id||!Number.isFinite(Date.parse(r.fecha))))throw Error('Respuesta inválida');
-      if(rows.some(r=>seen.has(r.traspaso_id))||new Set(rows.map(r=>r.traspaso_id)).size!==rows.length)throw Error('Página repetida');
-      for(const r of rows){
-        seen.add(r.traspaso_id);const date=new Date(r.fecha),day=dayFmt.format(date);
-        if(day!==lastDay){const h=document.createElement('h3');h.textContent=day;root.insertBefore(h,more);lastDay=day;}
-        const item=document.createElement('p'),title=document.createElement('strong');
-        title.textContent=r.nombre_jugador+' · '+euros(r.importe_centimos);
-        item.append(title,document.createElement('br'),document.createTextNode(r.origen+' → '+r.destino+' · '+timeFmt.format(date)+' · '+({market:'Mercado',manager_sale:'Entre managers',computer_sale:'Venta a COMPUTER',bad_team_sale:'Equipo Malo',clause:'Cláusula',bad_team_clause:'Cláusula Equipo Malo'}[r.tipo]||r.tipo)));
-        root.insertBefore(item,more);count++;
-      }
-      cursor=rows.at(-1)||cursor;status.textContent=count?'':'Todavía no hay fichajes confirmados.';more.hidden=!full||rows.length<limit;
-    }catch(e){if(valid()){status.textContent='No se pudieron cargar las noticias. Vuelve a intentarlo.';more.hidden=false;more.textContent='Reintentar';}}
-    finally{busy=false;more.disabled=false;}
-  }
-  more.hidden=true;root.append(more);more.addEventListener('click',()=>void load());await load();
 }
 function cambiarVista(nombre, jugadorVenta=null) {
   if (!token) return;
   if (nombre==='admin'&&!adminAutorizado) return;
   vistaActual=nombre;
-  newsRevision++;
-  el('news-history').hidden=nombre!=='news';
-  if(nombre==='news')void cargarNoticias(el('news-history'),true);
-  if(nombre==='home')void cargarNoticias(el('news-latest'));
+  if(el('news-history'))el('news-history').hidden=nombre!=='news';
+  if(nombre==='news'||nombre==='home')void panelNoticias?.show(nombre);
+  else panelNoticias?.clear();
   const esInicio = nombre === 'home';
   homeView.hidden = !esInicio;
   teamView.hidden = nombre !== 'team';
@@ -134,7 +103,7 @@ function cambiarVista(nombre, jugadorVenta=null) {
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
-  newsRevision++;el('news-latest').replaceChildren();el('news-history').replaceChildren();
+  panelNoticias?.clear();
   divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear(); panelAlineacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity']) {
@@ -498,13 +467,13 @@ async function renovarSiCaduca() {
   }
 }
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) void renovarSiCaduca();
+  if (!document.hidden) { void renovarSiCaduca(); if(token&&vistaActual==='home')void panelNoticias?.refreshHome(); }
 });
-window.addEventListener('online', () => {void renovarSiCaduca();if(token){void actualizarEquipo();void comprobarAdmin();}});
+window.addEventListener('online', () => {void renovarSiCaduca();if(token){void actualizarEquipo();void comprobarAdmin();if(vistaActual==='home')void panelNoticias?.refreshHome();}});
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) void renovarSiCaduca();
 });
-setInterval(() => { if (token) void renovarSiCaduca(); }, 60000);
+setInterval(() => { if (token) { void renovarSiCaduca(); if(!document.hidden&&vistaActual==='home')void panelNoticias?.refreshHome(); } }, 60000);
 window.addEventListener('storage', (event) => {
   if (event.key !== SESION_KEY && event.key !== null) return;
   if (!persistente) return;
@@ -534,14 +503,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='24')return false;
-  url.searchParams.set('release','24');
+  if(!manual&&url.searchParams.get('release')==='25')return false;
+  url.searchParams.set('release','25');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='24'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='25'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.

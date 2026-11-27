@@ -216,3 +216,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 .roster-market-button{border:1px solid #b2c8ce;border-radius:10px;background:#e9f5f5;color:#16616c;padding:7px 9px;font-size:11px;font-weight:800;min-height:37px}
 
+
+/* Noticias de traspasos confirmados */
+.news-title-button{border:0;background:transparent;color:inherit;padding:0;font-weight:800;font-size:inherit;text-align:left}
+.news-title-button span{font-size:inherit;color:var(--green)}
+.news-day{margin:13px 0 3px;font-size:12px;text-transform:capitalize;color:var(--green)}
+.news-transfer{padding:10px 0;border-bottom:1px solid #e5ecef;display:grid;gap:3px;overflow-wrap:anywhere}
+.news-transfer:last-of-type{border-bottom:0}
+.news-transfer strong{font-size:14px;color:var(--ink)}
+.news-transfer small{font-size:12px;color:var(--muted)}
+.news-transfer .news-route{font-size:13px;color:var(--ink)}
+.news-history h2{margin:0 0 8px}
+.news-more{margin-top:10px;border:1px solid #d6e2e6;background:#f1f7f8;color:var(--green);border-radius:8px;padding:9px 12px;font-weight:700}

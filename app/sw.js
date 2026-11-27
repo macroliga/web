@@ -1,6 +1,6 @@
 // MACROLIGA - recursos públicos, NUNCA sesiones, tokens, API ni claves.
-const CACHE = 'macroliga-pwa-estatica-v24';
-const STATIC = ['./index.html','./styles.css?v=24','./app.js?v=24','./api.mjs?v=24',
+const CACHE = 'macroliga-pwa-estatica-v25';
+const STATIC = ['./index.html','./styles.css?v=25','./app.js?v=25','./api.mjs?v=24','./noticias.mjs?v=25',
   './catalogo.mjs?v=24','./alineacion.mjs?v=24','./clasificacion.mjs?v=15','./admin.mjs?v=17','./logic.mjs?v=10','./entrenadores.mjs?v=10','./session.mjs?v=10','./icon.svg','./manifest.webmanifest'];
 const urlRecurso = (item) => new URL(item, self.registration.scope).href;
 self.addEventListener('install', (event) => {
