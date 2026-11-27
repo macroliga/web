@@ -52,10 +52,11 @@ jobs:
             psql -X -v ON_ERROR_STOP=1 -f "$migration"
           done
           psql -X -v ON_ERROR_STOP=1 -f docs/propuestas/20261125_lecturas_manager.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/propuestas/20261127_mercado_manager.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/sql/manager_isolation.sql
 
           psql -X -v ON_ERROR_STOP=1 -c "drop function public.macroliga_mi_plantilla(uuid); drop function public.macroliga_mis_equipos();"
           psql -X -v ON_ERROR_STOP=1 -f tests/sql/manager_rollback_assertions.sql
 
       - name: Manager adapter unit tests
-        run: node --test tests/manager-read.test.mjs
+        run: node --test tests/manager-read.test.mjs tests/manager-market.test.mjs
