@@ -47,7 +47,16 @@ test('pantallas pendientes no simulan operaciones activas', () => {
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
-  assert.match(worker, /macroliga-pwa-estatica-v24/);
+  const release = html.match(/data-release="(\d+)"/)?.[1];
+  assert.ok(release, 'El HTML declara una versión');
+  assert.ok(worker.includes("'macroliga-pwa-estatica-v"+release+"'"));
+  for (const asset of ['app.js','styles.css']) {
+    assert.ok(html.includes('./'+asset+'?v='+release));
+    assert.ok(worker.includes("'./"+asset+"?v="+release+"'"));
+  }
+  const modNoticias = app.match(/from '\.\/noticias\.mjs\?v=(\d+)'/);
+  assert.ok(modNoticias, 'Noticias tiene versión de recurso');
+  assert.ok(worker.includes("'./noticias.mjs?v="+modNoticias[1]+"'"));
   assert.match(worker, /url\.origin !== self\.location\.origin/);
   assert.match(worker, /url\.pathname\.endsWith\('\/config\.js'\)/);
   assert.match(worker, /if \(!allowed\) return/);
