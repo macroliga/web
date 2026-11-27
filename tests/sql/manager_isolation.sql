@@ -10,7 +10,14 @@ insert into public.managers(id,auth_user_id,display_name) values ('00000000-0000
 insert into public.teams(id,division_id,manager_id,team_name,balance_cents) values ('00000000-0000-4000-8000-000000000031','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000021','A1',-100),('00000000-0000-4000-8000-000000000032','00000000-0000-4000-8000-000000000013','00000000-0000-4000-8000-000000000021','A2',0),('00000000-0000-4000-8000-000000000033','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000022','B1',500);
 insert into public.players(id,name,position,current_market_value_cents) values ('00000000-0000-4000-8000-000000000041','Test A','GK',1000),('00000000-0000-4000-8000-000000000042','Test B','MID',2000);
 insert into public.roster_ownership(division_id,player_id,owner_kind,team_id) values ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041','team','00000000-0000-4000-8000-000000000031'),('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042','team','00000000-0000-4000-8000-000000000033');
-do $$ begin
+insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,status) values
+ ('00000000-0000-4000-8000-000000000051','00000000-0000-4000-8000-000000000012',now()-interval '1 hour',now()+interval '1 hour',now()+interval '2 hours','open'),
+ ('00000000-0000-4000-8000-000000000052','00000000-0000-4000-8000-000000000013',now()-interval '1 hour',now()+interval '1 hour',now()+interval '2 hours','open');
+insert into public.market_lots(cycle_id,player_id,minimum_bid_cents) values
+ ('00000000-0000-4000-8000-000000000051','00000000-0000-4000-8000-000000000041',1000),
+ ('00000000-0000-4000-8000-000000000052','00000000-0000-4000-8000-000000000042',2000);
+do $ begin
+ if has_function_privilege('anon','public.macroliga_mi_mercado(uuid)','EXECUTE') then raise exception 'anon market grant'; end if;
  if has_function_privilege('anon','public.macroliga_mis_equipos()','EXECUTE') or has_function_privilege('anon','public.macroliga_mi_plantilla(uuid)','EXECUTE') then raise exception 'anon RPC grant'; end if;
  if not has_function_privilege('authenticated','public.macroliga_mis_equipos()','EXECUTE') or not has_function_privilege('authenticated','public.macroliga_mi_plantilla(uuid)','EXECUTE') then raise exception 'missing authenticated grant'; end if;
  begin
@@ -22,6 +29,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 do $$ begin
+ if (select count(*) from public.macroliga_mi_mercado('00000000-0000-4000-8000-000000000031')) <> 1 or not exists(select 1 from public.macroliga_mi_mercado('00000000-0000-4000-8000-000000000031') where jugador_id='00000000-0000-4000-8000-000000000041') then raise exception 'market division leak'; end if;
+ if exists(select 1 from public.macroliga_mi_mercado('00000000-0000-4000-8000-000000000033')) then raise exception 'foreign team market'; end if;
  if (select count(*) from public.macroliga_mis_equipos()) <> 2 then raise exception 'A team count'; end if;
  if not exists(select 1 from public.macroliga_mis_equipos() where equipo_id='00000000-0000-4000-8000-000000000031' and saldo_centimos=-100 and valor_plantilla_centimos=1000 and plazas_ocupadas=1) then raise exception 'A balance or roster'; end if;
  if not exists(select 1 from public.macroliga_mis_equipos() where equipo_id='00000000-0000-4000-8000-000000000032' and valor_plantilla_centimos=0 and plazas_ocupadas=0) then raise exception 'empty team'; end if;
@@ -32,6 +41,7 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
 do $$ begin
+ if exists(select 1 from public.macroliga_mi_mercado('00000000-0000-4000-8000-000000000032')) then raise exception 'foreign division market'; end if;
  if (select count(*) from public.macroliga_mis_equipos()) <> 1 or not exists(select 1 from public.macroliga_mis_equipos() where equipo_id='00000000-0000-4000-8000-000000000033') then raise exception 'B team'; end if;
  if exists(select 1 from public.macroliga_mi_plantilla('00000000-0000-4000-8000-000000000031')) or exists(select 1 from public.macroliga_mi_plantilla('00000000-0000-4000-8000-000000000032')) then raise exception 'A data leak'; end if;
 end $$;
