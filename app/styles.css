@@ -252,3 +252,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .standing-roster-title{font-size:17px;color:var(--ink);margin:16px 0 8px}
 .standing-team-roster{display:grid;gap:10px}
 .standing-roster-player{cursor:default;min-height:58px}
+
+.bad-team-clause{display:grid;gap:6px;border:1px solid #d2e1e5;border-radius:9px;padding:8px;background:#f7faf9;margin-top:4px}.bad-team-clause-detail{display:grid;gap:6px}.bad-team-clause-detail[hidden]{display:none}.bad-team-clause button:not(:disabled){color:#fff;background:#117783;border-color:#117783}.bad-team-clause-detail p{line-height:1.5}

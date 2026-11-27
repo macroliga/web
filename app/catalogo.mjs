@@ -1,3 +1,4 @@
+import { controlClausula } from './clausulas-equipo-malo.mjs?v=28';
 // Mercado: lecturas y operaciones autenticadas; no se conservan datos al salir.
 const normalizar=value=>String(value??'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('es');
 const posiciones={GK:'Portero',DEF:'Defensa',MID:'Centrocampista',FWD:'Delantero'};
@@ -96,7 +97,7 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     const isBad=owner.value==='bad_team';
     const heading=el('catalog-heading'), description=el('catalog-description');
     if(heading)heading.textContent=isBad?'Equipo Malo':'Todos los jugadores';
-    if(description)description.textContent=isBad?'Jugadores adquiridos por el Equipo Malo. Consulta Historial para ver las compras confirmadas.':'Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.';
+    if(description)description.textContent=isBad?'Jugadores del Equipo Malo. Consulta su cláusula y comprueba si puedes ficharlos. Las compras confirmadas aparecen en Historial.':'Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.';
     list.replaceChildren();prev.disabled=true;next.disabled=true;
     if(!loaded)return;
     let filtered;
@@ -110,9 +111,37 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
       name.textContent=r.nombre_jugador;
       info.textContent=[posiciones[r.posicion]||r.posicion,r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts'].filter(Boolean).join(' · ');
       ownership.textContent=[r.propietario_equipo,r.propietario_manager,r.activo?(r.en_mercado?'En mercado':''):'Baja de LaLiga · valor congelado'].filter(Boolean).join(' · ');
-      li.appendChild(name);li.appendChild(info);li.appendChild(ownership);list.appendChild(li);
+      li.appendChild(name);li.appendChild(info);li.appendChild(ownership);
+      const c=ctx,g=generation;
+      const clause=controlClausula(doc,r,{euros,
+        vigente:()=>Boolean(c&&valid(g,c)&&li.isConnected),
+        cotizar:()=>call(c,'macroliga_cotizar_clausula_equipo_malo',{p_jugador_id:r.jugador_id}),
+        pagar:(importe,clave)=>pagarClausula(c,g,r.jugador_id,importe,clave)});
+      if(clause)li.appendChild(clause);
+      list.appendChild(li);
     }
     prev.disabled=page===0;next.disabled=end>=filtered.length;
+  }
+  async function pagarClausula(c,g,jugador,importe,clave){
+    if(busy||!valid(g,c))throw Error('Sesión o mercado no disponible');
+    busy=true;
+    try{
+      const result=await c.client.operar('macroliga_pagar_clausula_equipo_malo',
+        {p_division_id:c.division,p_jugador_id:jugador,p_importe_centimos:importe,p_clave:clave},contexto().token);
+      if(!result)throw Error('Operación no confirmada');
+      if(!valid(g,c))return;
+      onChange();historyLoaded=false;history=[];historyDone=false;
+      actionMessage('Fichaje por cláusula confirmado.');
+    }catch(e){
+      if(valid(g,c))actionMessage(e.operationMessage||'No se pudo confirmar la cláusula. Se actualizará el catálogo.');
+      throw e;
+    }finally{
+      if(valid(g,c)){
+        try{const next=await cargarCatalogo((name,args)=>call(c,name,args),()=>valid(g,c));if(next&&valid(g,c)){rows=next;render();}}
+        catch{if(valid(g,c)){loaded=false;list.replaceChildren();status.textContent='Actualiza el catálogo para comprobar el fichaje.';}}
+        finally{if(valid(g,c)){busy=false;void loadMarket(c,g);}}
+      }
+    }
   }
   function renderHistory(){
     histList.replaceChildren();
