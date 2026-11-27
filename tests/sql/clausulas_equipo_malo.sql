@@ -18,7 +18,7 @@ insert into public.roster_ownership(division_id,player_id,owner_kind,team_id) va
  ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042','bad_team',null),
  ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000043','bad_team',null);
 
-do $
+do $$
 declare t text;
 begin
  foreach t in array array['teams','roster_ownership','wallet_entries','transfer_operations','clause_rules','clause_windows','bids','players'] loop
@@ -29,9 +29,9 @@ begin
      raise exception 'Acceso directo a tabla: %',t;
    end if;
  end loop;
-end $;
+end $$;
 set local role anon;
-do $ begin
+do $$ begin
  begin
    perform public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041');
    raise exception 'Anon obtuvo cotización';
@@ -40,11 +40,13 @@ do $ begin
    perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099');
    raise exception 'Anon pudo pagar';
  exception when insufficient_privilege then null; end;
-end $;
+end $$;
 reset role;
-do $ begin
+do $$ begin
  if has_function_privilege('anon','public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid)','EXECUTE') or
     has_function_privilege('anon','public.macroliga_cotizar_clausula_equipo_malo(uuid,uuid)','EXECUTE') or
+    has_function_privilege('service_role','public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid)','EXECUTE') or
+    has_function_privilege('macroliga_runner','public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid)','EXECUTE') or
     has_function_privilege('authenticated','app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text)','EXECUTE')
  then raise exception 'RPC/función contable expuesta'; end if;
  if not has_function_privilege('authenticated','public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid)','EXECUTE') then raise exception 'RPC no accesible al manager'; end if;
@@ -54,7 +56,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 do $$ begin
- if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041')->>'disponible' <> 'false' then raise exception 'Permite pago sin regla'; end if;
+ if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041')->>'disponible' is distinct from 'false' then raise exception 'Permite pago sin regla'; end if;
  begin
    perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099');
    raise exception 'Pago sin regla';

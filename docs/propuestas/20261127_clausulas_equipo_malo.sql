@@ -213,7 +213,7 @@ end;
 $function$;
 
 -- La función privada conserva propietario y permisos; explícitamente sin acceso cliente.
-revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from public,anon,authenticated;
+revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from public,anon,authenticated,service_role,macroliga_runner;
 
 create function public.macroliga_cotizar_clausula_equipo_malo(p_division_id uuid,p_jugador_id uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -301,8 +301,8 @@ begin
  return app_private._contabilizar_traspaso(p_division_id,p_jugador_id,null,v_team,
    'bad_team','team',p_importe_centimos,'bad_team_clause',v_key);
 end $$;
-revoke all on function public.macroliga_cotizar_clausula_equipo_malo(uuid,uuid) from public,anon,authenticated;
-revoke all on function public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid) from public,anon,authenticated;
+revoke all on function public.macroliga_cotizar_clausula_equipo_malo(uuid,uuid) from public,anon,authenticated,service_role,macroliga_runner;
+revoke all on function public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid) from public,anon,authenticated,service_role,macroliga_runner;
 grant execute on function public.macroliga_cotizar_clausula_equipo_malo(uuid,uuid) to authenticated;
 grant execute on function public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid) to authenticated;
 commit;

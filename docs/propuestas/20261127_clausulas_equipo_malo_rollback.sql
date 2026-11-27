@@ -205,5 +205,5 @@ begin
 end;
 $function$;
 
-revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from public,anon,authenticated;
+revoke all on function app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text) from public,anon,authenticated,service_role,macroliga_runner;
 commit;
