@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-release="25">
+<html lang="es" data-release="26">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=25">
+  <link rel="stylesheet" href="./styles.css?v=26">
 </head>
 <body>
   <div class="shell">
@@ -141,6 +141,15 @@
           <section id="news-history" class="detail-card news-history" hidden aria-labelledby="news-history-title">
             <h2 id="news-history-title">📰 Noticias de MACROLIGA</h2>
             <p>Fichajes confirmados de tu división, agrupados por día (hora peninsular).</p>
+            <div id="news-filters" class="news-filters" role="group" aria-label="Filtrar noticias por fecha">
+              <div class="news-filter-buttons">
+                <button type="button" data-news-filter="hoy" aria-pressed="true">Hoy</button>
+                <button type="button" data-news-filter="ayer" aria-pressed="false">Ayer</button>
+                <button type="button" data-news-filter="todas" aria-pressed="false">Todas</button>
+              </div>
+              <label for="news-date">Elegir fecha</label>
+              <input id="news-date" type="date" aria-label="Elegir una fecha de noticias">
+            </div>
             <div id="news-history-list" aria-live="polite"></div>
           </section>
           <div class="detail-card empty-state" id="section-placeholder">
@@ -291,10 +300,10 @@
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
-    <div class="release-info"><span>Aplicación piloto · versión 25</span><button id="app-refresh" type="button">Actualizar app</button></div>
+    <div class="release-info"><span>Aplicación piloto · versión 26</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=25"></script>
+  <script type="module" src="./app.js?v=26"></script>
 </body>
 </html>
 

@@ -228,3 +228,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .news-transfer .news-route{font-size:13px;color:var(--ink)}
 .news-history h2{margin:0 0 8px}
 .news-more{margin-top:10px;border:1px solid #d6e2e6;background:#f1f7f8;color:var(--green);border-radius:8px;padding:9px 12px;font-weight:700}
+
+/* Filtros del historial de noticias, adaptados a móvil. */
+.news-filters{display:grid;gap:9px;margin:13px 0 6px;padding:12px;background:#f2f7f8;border:1px solid #dce7e9;border-radius:12px}
+.news-filter-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.news-filter-buttons button{min-height:42px;border:1px solid #c5d8db;border-radius:8px;background:#fff;color:var(--green);font:inherit;font-size:13px;font-weight:750;padding:7px 4px}
+.news-filter-buttons button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:white}
+.news-filters label{font-size:12px;font-weight:750;color:var(--ink)}
+.news-filters input[type="date"]{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px 10px;border:1px solid #c5d8db;border-radius:8px;background:#fff;color:var(--ink);font:inherit}
+.news-filters :focus-visible{outline:3px solid #9abfc3;outline-offset:2px}
