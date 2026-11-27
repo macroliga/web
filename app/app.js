@@ -27,6 +27,7 @@ const adminNav = el('admin-nav');
 const nav = document.querySelector('.bottom-nav');
 
 const SECCIONES = Object.freeze({
+  news: ['📰', 'Noticias', 'Historial de fichajes confirmados'],
   clauses: ['🔨', 'Cláusulas', 'Las cláusulas estarán disponibles cuando termine la puesta a punto del piloto.'],
   lineup: ['👕', 'Alineación', 'Prepara tu once y consulta los partidos.'],
   sales: ['⚽', 'Mercado', 'Gestiona tus ventas y ofertas.'],
@@ -63,10 +64,47 @@ const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, to
 function aviso(texto) {
   loginMessage.textContent = texto;
 }
+let newsRevision=0;
+async function cargarNoticias(root, full=false) {
+  const revision=++newsRevision, division=divisionActual, identity=identidadActual, session=intento;
+  const valid=()=>revision===newsRevision&&division===divisionActual&&identity===identidadActual&&session===intento&&Boolean(token);
+  root.replaceChildren();
+  const status=document.createElement('p');status.textContent='Consultando fichajes…';root.append(status);
+  let cursor=null, busy=false, lastDay='', count=0;
+  const seen=new Set();
+  const dayFmt=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',dateStyle:'full'});
+  const timeFmt=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',timeStyle:'short'});
+  const more=document.createElement('button');more.type='button';more.textContent='Cargar noticias anteriores';
+  async function load(){
+    if(busy||!valid())return;busy=true;more.disabled=true;
+    try{
+      const limit=full?50:5;
+      const rows=await cliente.consultar('macroliga_historial_traspasos',{p_division_id:division,p_antes_fecha:cursor?.fecha??null,p_antes_id:cursor?.traspaso_id??null,p_limite:limit},token);
+      if(!valid())return;
+      if(!Array.isArray(rows)||rows.length>limit||rows.some(r=>!r.traspaso_id||!Number.isFinite(Date.parse(r.fecha))))throw Error('Respuesta inválida');
+      if(rows.some(r=>seen.has(r.traspaso_id))||new Set(rows.map(r=>r.traspaso_id)).size!==rows.length)throw Error('Página repetida');
+      for(const r of rows){
+        seen.add(r.traspaso_id);const date=new Date(r.fecha),day=dayFmt.format(date);
+        if(day!==lastDay){const h=document.createElement('h3');h.textContent=day;root.insertBefore(h,more);lastDay=day;}
+        const item=document.createElement('p'),title=document.createElement('strong');
+        title.textContent=r.nombre_jugador+' · '+euros(r.importe_centimos);
+        item.append(title,document.createElement('br'),document.createTextNode(r.origen+' → '+r.destino+' · '+timeFmt.format(date)+' · '+({market:'Mercado',manager_sale:'Entre managers',computer_sale:'Venta a COMPUTER',bad_team_sale:'Equipo Malo',clause:'Cláusula',bad_team_clause:'Cláusula Equipo Malo'}[r.tipo]||r.tipo)));
+        root.insertBefore(item,more);count++;
+      }
+      cursor=rows.at(-1)||cursor;status.textContent=count?'':'Todavía no hay fichajes confirmados.';more.hidden=!full||rows.length<limit;
+    }catch(e){if(valid()){status.textContent='No se pudieron cargar las noticias. Vuelve a intentarlo.';more.hidden=false;more.textContent='Reintentar';}}
+    finally{busy=false;more.disabled=false;}
+  }
+  more.hidden=true;root.append(more);more.addEventListener('click',()=>void load());await load();
+}
 function cambiarVista(nombre, jugadorVenta=null) {
   if (!token) return;
   if (nombre==='admin'&&!adminAutorizado) return;
   vistaActual=nombre;
+  newsRevision++;
+  el('news-history').hidden=nombre!=='news';
+  if(nombre==='news')void cargarNoticias(el('news-history'),true);
+  if(nombre==='home')void cargarNoticias(el('news-latest'));
   const esInicio = nombre === 'home';
   homeView.hidden = !esInicio;
   teamView.hidden = nombre !== 'team';
@@ -85,7 +123,7 @@ function cambiarVista(nombre, jugadorVenta=null) {
   }
   if (panelAdmin) {
     const placeholder = el('section-placeholder');
-    placeholder.hidden = ['admin','market','sales','lineup','bad'].includes(nombre) || (nombre === 'standings' && Boolean(panelClasificacion));
+    placeholder.hidden = ['admin','market','sales','lineup','bad','news'].includes(nombre) || (nombre === 'standings' && Boolean(panelClasificacion));
     placeholder.classList.toggle('market-summary', nombre === 'market');
     if (nombre === 'admin') void panelAdmin.show(); else panelAdmin.clear();
   }
@@ -96,6 +134,7 @@ function cambiarVista(nombre, jugadorVenta=null) {
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 function borrarDatosPrivados() {
+  newsRevision++;el('news-latest').replaceChildren();el('news-history').replaceChildren();
   divisionActual = null; identidadActual = null; equipoRevision++;adminRevision++;mostrarAdmin(false); panelAdmin?.clear(); panelCatalogo?.clear(); panelClasificacion?.clear(); panelAlineacion?.clear();
   for (const id of ['team-title','team-short-name','team-division','header-balance',
     'team-balance','team-value','team-wealth','home-wealth','team-players','team-capacity']) {
