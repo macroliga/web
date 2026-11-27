@@ -1,4 +1,4 @@
-import { crearPanelNoticias } from './noticias.mjs?v=25';
+import { crearPanelNoticias } from './noticias.mjs?v=26';
 import { crearCliente } from './api.mjs?v=24';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=15';
 import { crearPanelCatalogo } from './catalogo.mjs?v=24';
@@ -62,7 +62,7 @@ const panelAlineacion = crearPanelAlineacion(el('lineup-panel'), () => ({client:
 const panelClasificacion = crearPanelClasificacion(el('standings-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}));
 const panelAdmin = crearPanelAdmin(el('admin-panel'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual}), () => {void actualizarEquipo();});
 
-const panelNoticias = crearPanelNoticias(el('news-latest'), el('news-history-list'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual, session:intento}));
+const panelNoticias = crearPanelNoticias(el('news-latest'), el('news-history-list'), () => ({client:cliente, token, division:divisionActual, identity:identidadActual, session:intento}), el('news-filters'));
 
 function aviso(texto) {
   loginMessage.textContent = texto;
@@ -503,14 +503,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='25')return false;
-  url.searchParams.set('release','25');
+  if(!manual&&url.searchParams.get('release')==='26')return false;
+  url.searchParams.set('release','26');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='25'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='26'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.
