@@ -1,0 +1,48 @@
+name: Manager isolation
+on:
+  push:
+    branches: [dev/manager-security-tests]
+  pull_request:
+    branches: [dev/manager-security-tests]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: supabase/postgres:17.6.1.063
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: local-test-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply versioned schema and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = 127.0.0.1
+          test -d supabase/migrations
+          shopt -s nullglob
+          migrations=(supabase/migrations/*.sql)
+          test "${#migrations[@]}" -gt 0
+          for migration in "${migrations[@]}"; do
+            psql -X -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql -X -v ON_ERROR_STOP=1 -f docs/propuestas/20261125_lecturas_manager.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/manager_isolation.sql
