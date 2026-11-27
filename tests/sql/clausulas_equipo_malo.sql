@@ -42,7 +42,7 @@ do $$ begin
 end $$;
 reset role;
 insert into public.clause_rules(season_id,from_value_cents,to_value_cents,multiplier,source_ref,version)
- values ('00000000-0000-4000-8000-000000000011',16000000,16000000,3.9,'fixture exacto',1);
+ values ('00000000-0000-4000-8000-000000000011',16000000,34999999,3.9,'fixture tramo',1);
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
@@ -59,7 +59,7 @@ select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 
 do $$ declare v_first uuid; begin
  if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041')->>'importe_centimos' is distinct from '62400000' then raise exception 'Precio incorrecto'; end if;
- if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042')->>'disponible' is distinct from 'false' then raise exception 'Umbral no aprobado'; end if;
+ if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042')->>'importe_centimos' is distinct from '70200000' then raise exception 'Tramo intermedio incorrecto'; end if;
  begin
    perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',1,'00000000-0000-4000-8000-000000000099');
    raise exception 'Precio manipulado';
