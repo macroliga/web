@@ -56,3 +56,6 @@ jobs:
 
           psql -X -v ON_ERROR_STOP=1 -c "drop function public.macroliga_mi_plantilla(uuid); drop function public.macroliga_mis_equipos();"
           psql -X -v ON_ERROR_STOP=1 -f tests/sql/manager_rollback_assertions.sql
+
+      - name: Manager adapter unit tests
+        run: node --test tests/manager-read.test.mjs
