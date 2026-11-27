@@ -18,7 +18,31 @@ insert into public.roster_ownership(division_id,player_id,owner_kind,team_id) va
  ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042','bad_team',null),
  ('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000043','bad_team',null);
 
-do $$ begin
+do $
+declare t text;
+begin
+ foreach t in array array['teams','roster_ownership','wallet_entries','transfer_operations','clause_rules','clause_windows','bids','players'] loop
+   if not (select c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname=t) then
+     raise exception 'RLS ausente: %',t;
+   end if;
+   if has_table_privilege('authenticated','public.'||t,'select,insert,update,delete') or has_table_privilege('anon','public.'||t,'select,insert,update,delete') then
+     raise exception 'Acceso directo a tabla: %',t;
+   end if;
+ end loop;
+end $;
+set local role anon;
+do $ begin
+ begin
+   perform public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041');
+   raise exception 'Anon obtuvo cotización';
+ exception when insufficient_privilege then null; end;
+ begin
+   perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099');
+   raise exception 'Anon pudo pagar';
+ exception when insufficient_privilege then null; end;
+end $;
+reset role;
+do $ begin
  if has_function_privilege('anon','public.macroliga_pagar_clausula_equipo_malo(uuid,uuid,bigint,uuid)','EXECUTE') or
     has_function_privilege('anon','public.macroliga_cotizar_clausula_equipo_malo(uuid,uuid)','EXECUTE') or
     has_function_privilege('authenticated','app_private._contabilizar_traspaso(uuid,uuid,uuid,uuid,text,text,bigint,text,text)','EXECUTE')
@@ -48,7 +72,11 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 do $$ begin
- if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041')->>'disponible' <> 'false' then raise exception 'Ventana cerrada'; end if;
+ if public.macroliga_cotizar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041')->>'disponible' is distinct from 'false' then raise exception 'Ventana cerrada'; end if;
+ begin
+   perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099');
+   raise exception 'Pago en ventana cerrada';
+ exception when invalid_parameter_value then null; end;
 end $$;
 reset role;
 insert into public.clause_windows(division_id,opens_at,closes_at,reason)
@@ -66,6 +94,10 @@ do $$ declare v_first uuid; begin
  exception when invalid_parameter_value then null; end;
  v_first:=public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099');
  if v_first is distinct from public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000041',62400000,'00000000-0000-4000-8000-000000000099') then raise exception 'Repetición cobrada dos veces'; end if;
+ begin
+   perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000042',70200000,'00000000-0000-4000-8000-000000000099');
+   raise exception 'Clave reutilizada con otro jugador';
+ exception when unique_violation then null; end;
  begin
    perform public.macroliga_pagar_clausula_equipo_malo('00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000043',62400000,'00000000-0000-4000-8000-000000000098');
    raise exception 'Sin margen económico';
@@ -92,6 +124,6 @@ do $$ begin
 end $$;
 rollback;
 do $$ begin
- if exists(select 1 from public.competitions where id='00000000-0000-4000-8000-000000000010') then raise exception 'Rollback de fixtures falló'; end if;
+ if exists(select 1 from public.competitions where id='00000000-0000-4000-8000-000000000010') or exists(select 1 from auth.users where id='00000000-0000-4000-8000-000000000001') or exists(select 1 from public.transfer_operations where division_id='00000000-0000-4000-8000-000000000012') then raise exception 'Rollback de fixtures falló'; end if;
 end $$;
 select 'clausulas equipo malo local: passed' as result;
