@@ -7,3 +7,9 @@
 - Se registra cada compra en transfer_operations (bad_team_sale, committed), roster_ownership y roster_events; sin cargo al saldo de entrenadores. Noticias e historial leen el mismo registro. El Equipo Malo no tiene cuenta de entrenador en este esquema.
 - Pruebas ejecutadas localmente en PostgreSQL 18.6 PGlite 0.5.15 desechable, reconstruyendo las 18 tablas pertinentes y 114 restricciones de la instancia real PostgreSQL 17.12 (auth.users/uid simulados exclusivamente localmente). Lotes del primer/segundo día y fuera del mercado, límite a un céntimo, bajas, valor cero, propietarios, ganador y saldo, división ajena, lote reservado, horario, ACL, idempotencia, error de clave tras compra previa y rollback sin cambios parciales. Segunda prueba de 196 compras, 196 eventos, 196 noticias paginadas, siguiente mercado de 15, saldo intacto. Ambas transacciones revertidas y restauración exacta de código/ACL comprobada. Sin fixtures alojados. 
 - Rollback de DDL disponible: restaura el cuerpo anterior, no deshace fichajes ya confirmados. La verificación de ejecución nocturna real requiere el siguiente cierre.
+
+## Despliegue verificado
+- Supabase Macroliga, proyecto xuwjbfnhvvbdargcohfe: migración `20261128103918_equipo_malo_todo_computer_menos_750000` aplicada correctamente (28/11/2026, 11:39 Madrid).
+- Definición instalada idéntica al SQL ensayado, MD5 `e948dda70bb1e372bea5bdefb2f5424b`. ACL intacta, anon y authenticated sin permiso de ejecución. Sin nuevos avisos de seguridad (59 hallazgos preexistentes, 59 después).
+- Cron existente activo, cada 5 min; ciclo abierto: cierre 29/11 01:00 y publicación 29/11 06:00. Confirmado en solo lectura: 196 candidatos, 5 futbolistas ya en Equipo Malo; no se ha ejecutado ninguna compra adicional al instalar. Pendiente de registrar la ejecución real del próximo cierre.
+- Sin modificaciones de interfaz, Comunio Laviana, cuentas, permisos, pujas ni datos de otras divisiones.
