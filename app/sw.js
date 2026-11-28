@@ -1,7 +1,7 @@
 // MACROLIGA - recursos públicos, NUNCA sesiones, tokens, API ni claves.
-const CACHE = 'macroliga-pwa-estatica-v27';
-const STATIC = ['./index.html','./styles.css?v=27','./app.js?v=27','./api.mjs?v=24','./noticias.mjs?v=26',
-  './catalogo.mjs?v=24','./alineacion.mjs?v=24','./clasificacion.mjs?v=27','./admin.mjs?v=17','./logic.mjs?v=10','./entrenadores.mjs?v=10','./session.mjs?v=10','./icon.svg','./manifest.webmanifest'];
+const CACHE = 'macroliga-pwa-estatica-v28';
+const STATIC = ['./index.html','./styles.css?v=28','./app.js?v=28','./api.mjs?v=28','./noticias.mjs?v=26',
+  './catalogo.mjs?v=28','./clausulas-equipo-malo.mjs?v=28','./alineacion.mjs?v=24','./clasificacion.mjs?v=27','./admin.mjs?v=17','./logic.mjs?v=10','./entrenadores.mjs?v=10','./session.mjs?v=10','./icon.svg','./manifest.webmanifest'];
 const urlRecurso = (item) => new URL(item, self.registration.scope).href;
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) =>
