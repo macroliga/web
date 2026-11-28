@@ -28,23 +28,22 @@ test('saldo en cabecera, Mi equipo compacto y datos solo en su vista', () => {
   assert.match(app, /el\('header-balance'\)\.textContent = euros/);
   assert.match(app, /topBalance\.hidden = true/);
 });
-test('navegación compacta fija en la parte superior y todos los accesos disponibles', () => {
-  const nav=html.match(/<nav class="bottom-nav compact-nav"[\s\S]*?<\/nav>/)?.[0];
-  assert.ok(nav);
-  for (const view of ['home','team','market','bad','lineup','news','standings','rules','cup','admin']) assert.match(nav,new RegExp('data-view="'+view+'"'));
-  assert.match(nav, /<details id="nav-more"/);
-  assert.match(styles, /\.compact-nav[^\{]*\{position:sticky;top:0/);
-  assert.match(styles, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+test('cuatro accesos principales en 2 columnas y barra inferior de cinco', () => {
+  assert.equal((html.match(/class="tile tile-/g)||[]).length,4);
+  assert.equal((html.split('<nav class="bottom-nav"')[1].match(/<button type="button" data-view="(home|rules|cup|standings|admin)"/g)||[]).length,5);
+  assert.match(styles, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(html, /id="admin-nav" hidden/);
   assert.match(app, /mostrarAdmin\(true\)/);
   assert.doesNotMatch(html, /league-status-card|id="admin-home"|id="home-manager-count"/);
   assert.match(html, /id="admin-state"/);
   assert.doesNotMatch(app, /actualizarResumenLiga|adminHome/);
   assert.match(html, /id="app-refresh"/);
+  assert.match(styles, /env\(safe-area-inset-bottom/);
 });
 test('pantallas pendientes no simulan operaciones activas', () => {
   assert.match(html, /Todavía no hay operaciones disponibles/);
-  assert.match(html, /Sección en preparación/);
+  assert.match(html, /En preparación/);
   assert.doesNotMatch(html, /Horario abierto/);
 });
 test('la caché no intercepta API, claves o credenciales', () => {
@@ -64,9 +63,9 @@ test('la caché no intercepta API, claves o credenciales', () => {
   assert.doesNotMatch(worker, /auth\/v1\/token/);
 });
 
-test('botón Salir accesible en Más y sesión recuperable', () => {
-  assert.match(html, /<details id="nav-more"[\s\S]*?id="logout-button"[\s\S]*?<\/details>/);
-  assert.match(styles, /\.nav-more-panel\{position:absolute/);
+test('botón Salir discreto fuera de Mi equipo y sesión recuperable', () => {
+  assert.match(html, /id="logout-button"[^>]+class="logout-mini"/);
+  assert.match(styles, /\.logout-mini\{position:fixed/);
   assert.match(app, /async function restaurarSesion\(\)/);
   assert.match(app, /cliente\.renovarSesion\(origen\.refreshToken\)/);
   assert.match(app, /guardarSesion\(storage, cuenta\.correo, nuevaSesion\.refreshToken\)/);

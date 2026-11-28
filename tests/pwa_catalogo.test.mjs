@@ -97,7 +97,7 @@ test('acceso Equipo Malo abre su plantilla real, avisa si aún no hay compras y 
  const panel=crearPanelCatalogo(root,()=>ctx);
  await panel.show('bad');
  assert.equal(root.hidden,false);assert.equal(e['market-players-view'].hidden,false);assert.equal(e['catalog-owner'].value,'bad_team');assert.equal(e['catalog-heading'].textContent,'Equipo Malo');assert.equal(e['catalog-list'].children.length,1);
- assert.equal(e['catalog-list'].children[0].children[0].children[0].textContent,rows[2].nombre_jugador);
+ assert.equal(e['catalog-list'].children[0].children[0].textContent,rows[2].nombre_jugador);
  catalog=rows.slice(0,2);await panel.show('bad');
  assert.match(e['catalog-status'].textContent,/aún no tiene jugadores/);assert.equal(e['catalog-list'].children.length,0);
  await panel.show('market');assert.equal(e['market-current-view'].hidden,false);assert.equal(e['catalog-owner'].value,'all');assert.equal(e['catalog-heading'].textContent,'Todos los jugadores');
