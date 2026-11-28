@@ -254,3 +254,67 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .standing-roster-player{cursor:default;min-height:58px}
 
 .bad-team-clause{display:grid;gap:6px;border:1px solid #d2e1e5;border-radius:9px;padding:8px;background:#f7faf9;margin-top:4px}.bad-team-clause-detail{display:grid;gap:6px}.bad-team-clause-detail[hidden]{display:none}.bad-team-clause button:not(:disabled){color:#fff;background:#117783;border-color:#117783}.bad-team-clause-detail p{line-height:1.5}
+
+/* v29 · navegación compacta y filas de fútbol; identidad MACROLIGA propia. */
+.shell{max-width:680px;padding-bottom:24px}
+.topbar{min-height:62px;padding:9px 1px 10px}
+.compact-nav,.compact-nav.has-admin{position:sticky;top:0;left:auto;bottom:auto;transform:none;width:100%;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:7px;margin:0 0 12px;background:#0e3547;border:1px solid #346272;border-radius:12px;box-shadow:0 3px 10px #071e2b55;z-index:20}
+.compact-nav>button,.compact-nav>.nav-more>summary{display:flex;align-items:center;justify-content:center;gap:3px;min-height:42px;min-width:0;flex-direction:column;background:#173d4d;color:#e5f2f5;border:1px solid #315668;border-radius:8px;padding:4px 2px;text-align:center;cursor:pointer;list-style:none}
+.compact-nav>button>span,.compact-nav>.nav-more>summary>span{font-size:15px;line-height:1.05;height:16px}
+.compact-nav>button small,.compact-nav>.nav-more>summary small{font-weight:750;font-size:11px;line-height:1.15;white-space:nowrap}
+.compact-nav>button.active,.nav-more.active>summary{background:#d8f0ed;color:#124b50;border-color:#d8f0ed}
+.nav-more{position:relative;min-width:0}
+.nav-more summary::-webkit-details-marker,.compact-bid summary::-webkit-details-marker{display:none}
+.nav-more summary:focus-visible,.compact-bid summary:focus-visible{outline:3px solid #65c7d4;outline-offset:2px}
+.nav-more-panel{position:absolute;right:0;top:calc(100% + 6px);width:190px;display:grid;gap:4px;padding:7px;border:1px solid #346272;border-radius:10px;background:#0e3547;box-shadow:0 8px 18px #071e2b77}
+.nav-more-panel button{min-height:40px;flex-direction:row;justify-content:flex-start;text-align:left;padding:8px;color:#e5f2f5;background:#173d4d;font-size:13px;font-weight:700}
+.nav-more-panel button.active{background:#d8f0ed;color:#124b50}
+.team-shortcut{min-height:57px;border-radius:10px;padding:9px 12px;margin-bottom:10px}
+.team-jersey{width:34px;height:34px;border-radius:9px;font-size:19px}
+.news-card,.detail-card{border-radius:12px;padding:12px}
+.detail-card h2{font-size:19px;margin-bottom:9px}
+.back-button{min-height:33px;margin-bottom:4px}
+.figures{gap:6px}.figures div{padding:8px}.figures strong{font-size:15px}
+.team-summary{padding:9px;margin-top:8px;border-radius:9px}
+.team-section-heading{margin-bottom:6px}
+.roster-groups,.standing-team-roster{gap:8px}
+.roster-position{border-radius:9px}
+.roster-position-head{padding:7px 9px}
+.roster-position-head h4{font-size:13px}
+.roster-player{min-height:64px;padding:7px 9px;gap:6px}
+.roster-player-info{gap:2px}.roster-player-name{font-size:14px}
+.roster-player-club,.roster-player-extra{font-size:11px;line-height:1.25}
+.roster-player-actions{min-width:0;gap:2px}.roster-value-label{display:none}
+.roster-player-value{font-size:13px}
+.roster-market-button{min-height:32px;padding:4px 8px;border-radius:7px;font-size:11px}
+.roster-position-empty,.roster-empty{padding:8px}
+.catalog-panel{margin-top:0;gap:7px}
+.catalog-content,.catalog-controls{gap:6px;min-width:0}
+.catalog-panel h2{margin:0 0 3px}
+.market-tabs{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding-bottom:5px}
+.market-tabs button{font-size:11px;min-height:39px;padding:5px 2px;border-radius:7px}
+.catalog-search-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:6px}
+.catalog-search-grid label{min-width:0;display:grid;gap:3px}
+.catalog-panel input,.catalog-panel select{min-width:0;padding:7px;font-size:13px;min-height:38px}
+.market-filter{padding:7px;border-radius:7px}
+.catalog-panel li.compact-player{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 8px;padding:8px 3px;min-height:53px;border-bottom:1px solid #e0e9ed;overflow-wrap:anywhere}
+.compact-player-identity{display:grid;gap:3px;min-width:0}
+.compact-player-name{font-size:14px;font-weight:800;line-height:1.2}
+.catalog-panel .compact-player-meta,.catalog-panel .compact-player-owner{font-size:11px;line-height:1.25}
+.compact-player-price{display:grid;justify-items:end;text-align:right;min-width:0;font-variant-numeric:tabular-nums}
+.catalog-panel .compact-player-caption{font-size:9px;letter-spacing:.045em;color:#617783}
+.compact-player-value{font-size:13px;color:#166456;white-space:nowrap}
+.compact-player-owner,.compact-player-actions,.compact-bid,.compact-player>.bad-team-clause{grid-column:1/-1}
+.compact-player-actions{display:flex;justify-content:space-between;gap:6px;align-items:center}
+.compact-player-actions button{min-height:34px;font-size:12px;padding:4px 8px}
+.compact-bid{background:#f1f7f8;border:1px solid #c5d8dd;border-radius:7px;margin-top:2px}
+.compact-bid summary{list-style:none;cursor:pointer;font-size:12px;font-weight:800;display:flex;justify-content:space-between;align-items:center;padding:7px 9px;min-height:35px;color:#16616c}
+.compact-bid summary::after{content:'+';font-size:17px}
+.compact-bid[open] summary::after{content:'−'}
+.compact-bid .market-operation{padding:0 8px 8px}
+.market-schedule-note:not(:empty){background:#edf6f0;color:#245d42;border-radius:7px;padding:7px;font-weight:650}
+.compact-player>.bad-team-clause{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px;padding:5px 7px;margin-top:2px;border-radius:7px}
+.compact-player>.bad-team-clause>span{font-size:11px;color:#205646}
+.compact-player>.bad-team-clause>button{font-size:11px;min-height:34px;padding:4px 7px;white-space:nowrap}
+.bad-team-clause-detail{grid-column:1/-1}
+@media(max-width:350px){.compact-nav{gap:3px;padding:5px}.compact-nav>button small,.compact-nav>.nav-more>summary small{font-size:10px}.compact-player-value{font-size:12px}.detail-card{padding:10px}}

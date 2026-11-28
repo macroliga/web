@@ -64,6 +64,26 @@ export async function cargarCatalogo(call,valid=()=>true){
   }
   throw Error('Catálogo demasiado grande; no se presenta un resultado parcial');
 }
+// Precio y puntos en columnas; las acciones se mantienen separadas.
+export function crearFilaJugador(doc,r,{estado=''}={}){
+  const n=(tag,cls,txt)=>{const e=doc.createElement(tag);e.className=cls;if(txt!=null)e.textContent=txt;return e;};
+  const li=n('li','compact-player');
+  const identity=n('div','compact-player-identity');
+  identity.appendChild(n('strong','compact-player-name',r.nombre_jugador));
+  identity.appendChild(n('span','compact-player-meta',[posiciones[r.posicion]||r.posicion,r.club,r.puntos_acumulados==null?'Sin puntos':r.puntos_acumulados+' pts',estado].filter(Boolean).join(' · ')));
+  li.appendChild(identity);
+  const amount=n('div','compact-player-price');
+  amount.appendChild(n('span','compact-player-caption','VALOR'));
+  amount.appendChild(n('strong','compact-player-value',euros(r.valor_mercado_centimos)));
+  li.appendChild(amount);
+  return li;
+}
+// Solo es una previsión: las pujas ganadoras tienen prioridad y el servidor decide.
+export function candidatosEquipoMalo(rows){
+  return rows.filter(r=>Number(r.dia_mercado)===2 && r.estado==='open' &&
+    /^\d+$/.test(String(r.valor_mercado_centimos)) &&
+    BigInt(r.valor_mercado_centimos)>0n && BigInt(r.valor_mercado_centimos)<75000000n).length;
+}
 export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
   if(!root)return null;
   const doc=root.ownerDocument,el=id=>root.querySelector('#'+id);
@@ -97,7 +117,7 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     const isBad=owner.value==='bad_team';
     const heading=el('catalog-heading'), description=el('catalog-description');
     if(heading)heading.textContent=isBad?'Equipo Malo':'Todos los jugadores';
-    if(description)description.textContent=isBad?'Jugadores del Equipo Malo. Consulta su cláusula y comprueba si puedes ficharlos. Las compras confirmadas aparecen en Historial.':'Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.';
+    if(description)description.textContent=isBad?'Paga la cláusula de un jugador para ficharlo. Las compras automáticas se publican a las 06:00: jugadores sin puja ganadora tras su segundo día y valor inferior a 750.000 €.':'Busca, filtra y compara jugadores de tu división.';
     list.replaceChildren();prev.disabled=true;next.disabled=true;
     if(!loaded)return;
     let filtered;
@@ -107,11 +127,10 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
     const start=page*PAGE,end=Math.min(start+PAGE,filtered.length);
     status.textContent=isBad&&!rows.some(r=>r.propietario_tipo==='bad_team')?'El Equipo Malo aún no tiene jugadores. Las compras nocturnas confirmadas aparecerán aquí.':filtered.length+' de '+rows.length+' jugadores'+(filtered.length?' · '+(start+1)+'–'+end:rows.length?' · Sin coincidencias':' · Catálogo aún sin cargar');
     for(const r of filtered.slice(start,end)){
-      const li=doc.createElement('li'),name=doc.createElement('strong'),info=doc.createElement('span'),ownership=doc.createElement('span');
-      name.textContent=r.nombre_jugador;
-      info.textContent=[posiciones[r.posicion]||r.posicion,r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts'].filter(Boolean).join(' · ');
-      ownership.textContent=[r.propietario_equipo,r.propietario_manager,r.activo?(r.en_mercado?'En mercado':''):'Baja de LaLiga · valor congelado'].filter(Boolean).join(' · ');
-      li.appendChild(name);li.appendChild(info);li.appendChild(ownership);
+      const li=crearFilaJugador(doc,r);
+      const ownership=node('span',[r.propietario_equipo,r.propietario_manager,r.activo?(r.en_mercado?'En mercado':''):'Baja de LaLiga · valor congelado'].filter(Boolean).join(' · '));
+      ownership.className='compact-player-owner';
+      li.appendChild(ownership);
       const c=ctx,g=generation;
       const clause=controlClausula(doc,r,{euros,
         vigente:()=>Boolean(c&&valid(g,c)&&li.isConnected),
@@ -200,18 +219,31 @@ export function crearPanelCatalogo(root,contexto,onChange=()=>{}){
   function renderMarket(){
     marketList.replaceChildren();
     const result=marketRows;
+    const schedule=el('bad-team-next');
+    if(schedule)schedule.textContent='';
     if(!result.length)return;
     const state=result[0].estado;
     const counts=Object.keys(posiciones).map(p=>result.filter(r=>r.posicion===p).length);
     const enabled=operations?.pujas_abiertas===true&&state==='open';
     marketStatus.textContent=(state==='preview'?'Vista previa · sin pujas':enabled?'Mercado abierto':state==='draft'?'Mercado preparado · no abierto':'Mercado no disponible para pujas')+' · '+result.length+' jugadores · '+counts.map((n,i)=>n+' '+['POR','DEF','MED','DEL'][i]).join(' · ')+(operations?.abre&&!enabled?' · Apertura prevista '+formatDate.format(new Date(operations.abre)):'')+(enabled&&operations?.cierra?' · Cierre '+formatDate.format(new Date(operations.cierra)):'');
+    if(schedule&&state==='open'){
+      const num=candidatosEquipoMalo(result);
+      schedule.textContent=num ? 'Equipo Malo · '+num+' '+(num===1?'candidato':'candidatos')+' para las 06:00 (si no hay puja ganadora).' : 'Equipo Malo · sin candidatos de segundo día por debajo de 750.000 €.';
+    }
     for(const r of result){
-      const li=node('li'),name=node('strong',r.nombre_jugador),info=node('span',[posiciones[r.posicion],r.club,euros(r.valor_mercado_centimos),r.puntos_acumulados==null?'Sin puntos registrados':r.puntos_acumulados+' pts',state==='open'?'Día '+r.dia_mercado:''].filter(Boolean).join(' · '));
-      li.appendChild(name);li.appendChild(info);
+      const li=crearFilaJugador(doc,r,{estado:state==='open'?'Día '+r.dia_mercado:''});
       const lot=operations?.lotes?.find(x=>x.jugador_id===r.jugador_id);
       if(lot){
-        if(lot.puja_id){li.appendChild(node('span','Mi puja: '+euros(lot.importe)));li.appendChild(button('Retirar mi puja',enabled,()=>void operate('macroliga_retirar_puja',{p_puja_id:lot.puja_id})));}
-        else priceControl(li,'Pujar',lot.minimo,enabled,amount=>void operate('macroliga_presentar_puja',{p_lote_id:lot.lote_id,p_importe_centimos:amount}));
+        if(lot.puja_id){
+          const actions=node('div');actions.className='compact-player-actions';
+          actions.appendChild(node('span','Mi puja: '+euros(lot.importe)));
+          actions.appendChild(button('Retirar puja',enabled,()=>void operate('macroliga_retirar_puja',{p_puja_id:lot.puja_id})));li.appendChild(actions);
+        }else if(enabled){
+          const details=node('details');details.className='compact-bid';
+          details.appendChild(node('summary','Pujar · desde '+euros(lot.minimo)));
+          priceControl(details,'Confirmar puja',lot.minimo,true,amount=>void operate('macroliga_presentar_puja',{p_lote_id:lot.lote_id,p_importe_centimos:amount}));
+          li.appendChild(details);
+        }
       }
       marketList.appendChild(li);
     }

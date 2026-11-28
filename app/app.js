@@ -1,7 +1,7 @@
 import { crearPanelNoticias } from './noticias.mjs?v=26';
 import { crearCliente } from './api.mjs?v=28';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=27';
-import { crearPanelCatalogo } from './catalogo.mjs?v=28';
+import { crearPanelCatalogo } from './catalogo.mjs?v=29';
 import { crearPanelAlineacion } from './alineacion.mjs?v=24';
 import { crearPanelAdmin } from './admin.mjs?v=17';
 import { euros } from './logic.mjs?v=10';
@@ -25,7 +25,6 @@ const homeView = el('home-view');
 const sectionView = el('section-view');
 const topBalance = el('top-balance');
 const adminNav = el('admin-nav');
-const nav = document.querySelector('.bottom-nav');
 
 const SECCIONES = Object.freeze({
   news: ['📰', 'Noticias', 'Historial de fichajes confirmados'],
@@ -84,8 +83,11 @@ function cambiarVista(nombre, jugadorVenta=null) {
     el('section-title').textContent = titulo;
     el('section-message').textContent = mensaje;
   }
-  for (const boton of document.querySelectorAll('.bottom-nav button')) {
-    const activo = boton.dataset.view === (SECCIONES[nombre] ? nombre : 'home');
+  const menuActivo = nombre === 'sales' ? 'market' : nombre;
+  const more = el('nav-more');
+  if (more) { more.open = false; more.classList.toggle('active', ['rules','cup','admin'].includes(menuActivo)); }
+  for (const boton of document.querySelectorAll('.bottom-nav button[data-view]')) {
+    const activo = boton.dataset.view === menuActivo;
     boton.classList.toggle('active', activo);
     if (activo) boton.setAttribute('aria-current', 'page');
     else boton.removeAttribute('aria-current');
@@ -191,11 +193,6 @@ function pintarPlantilla(jugadores) {
       const acciones = hacer('div', 'roster-player-actions');
       acciones.appendChild(hacer('small', 'roster-value-label', 'VALOR'));
       acciones.appendChild(hacer('strong', 'roster-player-value', euros(jugador.valor_mercado_centimos || 0)));
-      const vender = hacer('button', 'roster-sale-button', 'Vender al ☠️');
-      vender.type = 'button';
-      vender.disabled = true;
-      vender.title = 'La venta al Equipo Malo aún no está activada';
-      acciones.appendChild(vender);
       if(jugador.jugador_id){
         const mercado=hacer('button','roster-market-button','Poner en venta');
         mercado.type='button';mercado.addEventListener('click',()=>cambiarVista('sales',jugador.jugador_id));acciones.appendChild(mercado);
@@ -255,7 +252,6 @@ async function actualizarEquipo(){
 function mostrarAdmin(autorizado){
   adminAutorizado=autorizado;
   if(adminNav)adminNav.hidden=!autorizado;
-  nav?.classList.toggle('has-admin',autorizado);
 }
 async function comprobarAdmin(){
   if(!token||!divisionActual||!identidadActual)return;
@@ -503,14 +499,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='28')return false;
-  url.searchParams.set('release','28');
+  if(!manual&&url.searchParams.get('release')==='29')return false;
+  url.searchParams.set('release','29');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='28'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='29'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.
