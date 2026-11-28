@@ -1,5 +1,6 @@
 import { crearPanelNoticias } from './noticias.mjs?v=26';
-import { crearCliente } from './api.mjs?v=28';
+import { crearCliente } from './api.mjs?v=31';
+import { conectarVentaEquipoMalo } from './ventas-equipo-malo.mjs?v=31';
 import { crearPanelClasificacion } from './clasificacion.mjs?v=27';
 import { crearPanelCatalogo } from './catalogo.mjs?v=30';
 import { crearPanelAlineacion } from './alineacion.mjs?v=24';
@@ -193,8 +194,12 @@ function pintarPlantilla(jugadores) {
       acciones.appendChild(hacer('strong', 'roster-player-value', euros(jugador.valor_mercado_centimos || 0)));
       const vender = hacer('button', 'roster-sale-button', 'Vender al ☠️');
       vender.type = 'button';
-      vender.disabled = true;
-      vender.title = 'La venta al Equipo Malo aún no está activada';
+      conectarVentaEquipoMalo(vender,jugador,{
+        contexto:()=>({client:cliente,token,division:divisionActual,identity:identidadActual,session:intento}),
+        euros,confirmar:texto=>window.confirm(texto),
+        mensaje:texto=>{if(el('team-refresh-status'))el('team-refresh-status').textContent=texto;},
+        actualizar:()=>actualizarEquipo()
+      });
       acciones.appendChild(vender);
       if(jugador.jugador_id){
         const mercado=hacer('button','roster-market-button','Poner en venta');
@@ -503,14 +508,14 @@ try {
 function actualizarAplicacion(manual=false){
   if(!window.location?.href)return false;
   const url=new URL(window.location.href);
-  if(!manual&&url.searchParams.get('release')==='30')return false;
-  url.searchParams.set('release','30');
+  if(!manual&&url.searchParams.get('release')==='31')return false;
+  url.searchParams.set('release','31');
   if(manual)url.searchParams.set('refresh',String(Date.now()));
   window.location.replace(url.href);
   return true;
 }
 el('app-refresh')?.addEventListener('click',()=>actualizarAplicacion(true));
-const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='30'&&actualizarAplicacion());
+const actualizandoHTML = Boolean(document.documentElement&&document.documentElement.dataset.release!=='31'&&actualizarAplicacion());
 
 // El PIN nunca se guarda. Para no pedirlo cada vez, solo se conserva
 // el token de renovación que emite Supabase en este dispositivo.
@@ -521,5 +526,6 @@ if (!actualizandoHTML) {
     navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).catch(() => {});
   }
 }
+
 
 
