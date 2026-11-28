@@ -4,3 +4,10 @@
 - Solo competencia MACROLIGA_PILOTO_INVIERNO_2026, temporada 2026_27, división PILOTO. Los nuevos RPC autenticados validan propietario, división, horario, precio, clave idempotente y llaman al motor económico existente. Sin permisos anon; no se exponen funciones privadas.
 - Pruebas ejecutadas: PostgreSQL 18.6/PGlite 0.5.15 desechable, esquema real de 18 tablas y política de ventas añadida con sus restricciones; se simuló auth.uid únicamente en local. Horario cerrado y abierto mediante zona horaria de fixture, anuncios al mínimo, oferta pendiente, venta, saldo exacto, plantilla, historia, denegación de jugador y división ajenos, importe inválido, idempotencia, ACL y reversión de datos y DDL. 7 pruebas Node ejecutadas correctamente (confirmación, cierre, importe, sesión, doble clic, preselección y acción listar).
 - Sin fixtures en la base alojada. No se cambia el motor nocturno, la compra del Equipo Malo desde Computer ni las cláusulas, portada o navegación. Versión 31 solo modifica los controles existentes de Mi equipo y los recursos de carga. El rollback restaura la ausencia de política y elimina RPC nuevos, pero no deshace ventas confirmadas por usuarios.
+
+## Despliegue verificado
+- Proyecto Macroliga piloto xuwjbfnhvvbdargcohfe: migración `20261128104829_activar_ventas_piloto_mi_equipo` aplicada correctamente (28/11, 11:48 Madrid).
+- Política PILOTO enabled=true, min_sale_percent=null (recargos fijos). Mercado abierto. A las 11:48 el Equipo Malo seguía cerrado según el horario previsto y abriría a las 12:00.
+- Dos RPC instalados, ACL exclusivamente postgres/authenticated, SECURITY DEFINER con search_path vacío. Asesor de seguridad: dos advertencias esperadas sobre ejecución authenticated de SECURITY DEFINER, intencionadas y restringidas por auth.uid/propiedad/división; ninguna nueva exposición anónima. No se ha ejecutado ninguna venta real.
+- Hash de publicación nocturna intacto: e948dda70bb1e372bea5bdefb2f5424b.
+- Frontend v31, commit `952a7638db6f0a318565ae36204c75233ef0b44b` confirmado en main. 
