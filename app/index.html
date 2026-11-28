@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-release="28">
+<html lang="es" data-release="29">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
   <title>MACROLIGA · Liga piloto</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=28">
+  <link rel="stylesheet" href="./styles.css?v=29">
 </head>
 <body>
   <div class="shell">
@@ -60,6 +60,24 @@
       </section>
 
       <div id="private-view" hidden>
+        <nav class="bottom-nav compact-nav" aria-label="Navegación principal">
+          <button type="button" data-view="home" class="active" aria-current="page"><span aria-hidden="true">⌂</span><small>Inicio</small></button>
+          <button type="button" data-view="team"><span aria-hidden="true">👕</span><small>Mi equipo</small></button>
+          <button type="button" data-view="market"><span aria-hidden="true">⚽</span><small>Mercado</small></button>
+          <button type="button" data-view="bad"><span aria-hidden="true">👹</span><small>Equipo Malo</small></button>
+          <button type="button" data-view="lineup"><span aria-hidden="true">▦</span><small>Alineación</small></button>
+          <button type="button" data-view="news"><span aria-hidden="true">📰</span><small>Noticias</small></button>
+          <button type="button" data-view="standings"><span aria-hidden="true">📊</span><small>Clasificación</small></button>
+          <details id="nav-more" class="nav-more">
+            <summary><span aria-hidden="true">•••</span><small>Más</small></summary>
+            <div class="nav-more-panel">
+              <button type="button" data-view="rules">📖 Normas</button>
+              <button type="button" data-view="cup">🏆 Copa</button>
+              <button type="button" data-view="admin" id="admin-nav" hidden>⚙ Administración</button>
+              <button type="button" id="logout-button" aria-label="Cerrar sesión y cambiar entrenador">Salir de la sesión</button>
+            </div>
+          </details>
+        </nav>
         <section id="home-view" class="page-view" aria-label="Inicio">
           <button type="button" class="team-shortcut" data-view="team" aria-label="Abrir Mi equipo">
             <span class="team-jersey" aria-hidden="true">👕</span>
@@ -70,29 +88,6 @@
             </span>
             <span class="right-chevron" aria-hidden="true">›</span>
           </button>
-
-          <section class="features" aria-label="Menús principales">
-            <button type="button" class="tile tile-clauses" data-view="clauses">
-              <span class="tile-icon" aria-hidden="true">🔨</span>
-              <span class="tile-label">CLÁUSULAS</span>
-              <small>En preparación</small>
-            </button>
-            <button type="button" class="tile tile-lineup" data-view="lineup">
-              <span class="tile-icon" aria-hidden="true">👕</span>
-              <span class="tile-label">ALINEACIÓN</span>
-              <small>Prepara tu once</small>
-            </button>
-            <button type="button" class="tile tile-market" data-view="market">
-              <span class="tile-icon" aria-hidden="true">⚽</span>
-              <span class="tile-label">MERCADO</span>
-              <small>Pujas, ventas y jugadores</small>
-            </button>
-            <button type="button" class="tile tile-bad" data-view="bad">
-              <span class="tile-icon" aria-hidden="true">👹</span>
-              <span class="tile-label">EQUIPO MALO</span>
-              <small>Plantilla y compras</small>
-            </button>
-          </section>
 
           <section class="news-card" aria-labelledby="news-title">
             <div class="news-header">
@@ -167,7 +162,8 @@
             </div>
             <div id="market-current-view" class="catalog-content">
               <h2>Mercado de 15 jugadores</h2>
-              <p>Porteros, defensas, centrocampistas y delanteros. Cierre diario a la 01:00 y resultados a las 06:00 (hora peninsular).</p>
+              <p>Cierre 01:00 · resultados y nuevo mercado 06:00 (hora peninsular).</p>
+              <p id="bad-team-next" class="market-schedule-note" aria-live="polite"></p>
               <p id="market-current-status" role="status"></p>
               <p id="market-action-status" role="status"></p>
               <ul id="market-current-list" aria-label="Jugadores del mercado"></ul>
@@ -175,10 +171,12 @@
             <div id="market-players-view" class="catalog-content" hidden>
               <h2 id="catalog-heading">Todos los jugadores</h2>
               <p id="catalog-description">Valores actuales y puntos acumulados de la fuente deportiva. Incluye las bajas que aún tienen propietario.</p>
-              <label for="catalog-search">Buscar jugador, club o manager</label>
-              <input id="catalog-search" type="search" placeholder="Nombre, club o equipo">
-              <label for="catalog-sort">Ordenar por</label>
-              <select id="catalog-sort"><option value="name">Nombre A–Z</option><option value="points-desc">Más puntos</option><option value="points-asc">Menos puntos</option><option value="value-desc">Mayor valor</option><option value="value-asc">Menor valor</option></select>
+              <div class="catalog-search-grid">
+              <label for="catalog-search">Buscar
+              <input id="catalog-search" type="search" placeholder="Jugador, club, equipo"></label>
+              <label for="catalog-sort">Orden
+              <select id="catalog-sort"><option value="name">Nombre A–Z</option><option value="points-desc">Más puntos</option><option value="points-asc">Menos puntos</option><option value="value-desc">Mayor valor</option><option value="value-asc">Menor valor</option></select></label>
+              </div>
               <details class="market-filter"><summary>Filtros de jugadores</summary>
                 <div class="catalog-controls">
                   <label>Club <select id="catalog-club"><option value="">Todos los clubes</option></select></label>
@@ -300,22 +298,14 @@
           </div>
         </section>
 
-        <button id="logout-button" type="button" class="logout-mini"
-          aria-label="Cerrar sesión y cambiar entrenador">Salir</button>
-        <nav class="bottom-nav" aria-label="Navegación principal">
-          <button type="button" data-view="home" class="active" aria-current="page"><span aria-hidden="true">⌂</span><small>Inicio</small></button>
-          <button type="button" data-view="rules"><span aria-hidden="true">📖</span><small>Normas</small></button>
-          <button type="button" data-view="cup"><span aria-hidden="true">🏆</span><small>Copa</small></button>
-          <button type="button" data-view="standings"><span aria-hidden="true">📊</span><small>Clasificación</small></button>
-          <button type="button" data-view="admin" id="admin-nav" hidden><span aria-hidden="true">⚙</span><small>Admin</small></button>
-        </nav>
+
       </div>
     </main>
     <p class="prototype-note" id="prototype-note" hidden>MACROLIGA · Versión piloto en desarrollo</p>
-    <div class="release-info"><span>Aplicación piloto · versión 28</span><button id="app-refresh" type="button">Actualizar app</button></div>
+    <div class="release-info"><span>Aplicación piloto · versión 29</span><button id="app-refresh" type="button">Actualizar app</button></div>
   </div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=28"></script>
+  <script type="module" src="./app.js?v=29"></script>
 </body>
 </html>
 
