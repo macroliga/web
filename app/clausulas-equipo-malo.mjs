@@ -90,27 +90,41 @@ function multiplicarExacto(centimos,factor){
   const num=centimos*BigInt(entero+decimales),den=10n**BigInt(decimales.length);
   return num%den===0n?(num/den).toString():null;
 }
-export function referenciaClausula(centimos){
+export function detalleReferenciaClausula(centimos){
   if(typeof centimos==='number'&&!Number.isSafeInteger(centimos))return null;
   if(!/^[1-9]\d*$/.test(String(centimos)))return null;
   const value=BigInt(centimos);
   if(value<tramos[0][0])return null; // La fuente tampoco define un tramo inferior.
-  if(value>maxOriginal){const factor=ampliacion.get(value);return factor?multiplicarExacto(value,factor):null;}
+  if(value>maxOriginal){const factor=ampliacion.get(value);return factor?detalle(value,factor):null;}
   let lo=0,hi=tramos.length-1;
   while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(tramos[mid][0]<=value)lo=mid;else hi=mid-1;}
-  return multiplicarExacto(value,tramos[lo][1]);
+  return detalle(value,tramos[lo][1]);
+}
+function detalle(value,factor){
+  const importe=multiplicarExacto(value,factor);
+  return importe===null?null:{importe,factor};
+}
+export function referenciaClausula(centimos){
+  return detalleReferenciaClausula(centimos)?.importe??null;
 }
 export function cotizacionValida(q){
   return q?.disponible===true && typeof q.importe_centimos==='string' &&
     /^[1-9]\d{0,18}$/.test(q.importe_centimos);
 }
-export function controlClausula(doc,r,{euros,cotizar,pagar,vigente=()=>true}){
+export function controlClausula(doc,r,{euros,cotizar,pagar,vigente=()=>true,compacto=false}){
   if(r.propietario_tipo!=='bad_team'||r.activo!==true)return null;
   const node=(tag,txt)=>{const n=doc.createElement(tag);if(txt!=null)n.textContent=txt;return n;};
-  const box=node('div');box.className='bad-team-clause';
+  const box=node('div');box.className=compacto?'bad-team-clause bad-team-clause-inline':'bad-team-clause';
   const ref=referenciaClausula(r.valor_mercado_centimos);
-  box.appendChild(node('span',ref?'Cláusula de referencia: '+euros(ref):'Cláusula: importe pendiente de regla'));
-  const open=node('button','Pagar cláusula');open.type='button';open.setAttribute('aria-expanded','false');
+  if(compacto){
+    const price=node('div');price.className='bad-team-price';
+    const etiqueta=node('span','Precio Equipo Malo');etiqueta.className='bad-team-price-label';
+    const precio=node('strong',ref?euros(ref):'Por consultar');precio.className='bad-team-price-value';
+    const hint=node('small','Referencia');hint.className='bad-team-price-hint';
+    price.appendChild(etiqueta);price.appendChild(precio);price.appendChild(hint);
+    box.appendChild(price);
+  }else box.appendChild(node('span',ref?'Cláusula de referencia: '+euros(ref):'Cláusula: importe pendiente de regla'));
+  const open=node('button',compacto?'Comprar':'Pagar cláusula');open.type='button';if(compacto){open.className='bad-team-buy';open.setAttribute('aria-label','Comprar a '+r.nombre_jugador);}open.setAttribute('aria-expanded','false');
   const details=node('div');details.hidden=true;details.className='bad-team-clause-detail';
   const status=node('p','');status.setAttribute('role','status');details.appendChild(status);
   const confirm=node('button','Confirmar pago');confirm.type='button';confirm.disabled=true;details.appendChild(confirm);
@@ -147,3 +161,4 @@ export function controlClausula(doc,r,{euros,cotizar,pagar,vigente=()=>true}){
   });
   box.appendChild(open);box.appendChild(details);return box;
 }
+
