@@ -16,7 +16,7 @@ insert into public.market_cycles(id,division_id,opens_at,closes_at,publishes_at,
 insert into public.market_lots(cycle_id,player_id,minimum_bid_cents,division_id) values
  ('00000000-0000-4000-8000-000000000051','00000000-0000-4000-8000-000000000041',1000,'00000000-0000-4000-8000-000000000012'),
  ('00000000-0000-4000-8000-000000000052','00000000-0000-4000-8000-000000000042',2000,'00000000-0000-4000-8000-000000000013');
-do $ begin
+do $$ begin
  if has_function_privilege('anon','public.macroliga_mi_mercado(uuid)','EXECUTE') then raise exception 'anon market grant'; end if;
  if has_function_privilege('anon','public.macroliga_mis_equipos()','EXECUTE') or has_function_privilege('anon','public.macroliga_mi_plantilla(uuid)','EXECUTE') then raise exception 'anon RPC grant'; end if;
  if not has_function_privilege('authenticated','public.macroliga_mis_equipos()','EXECUTE') or not has_function_privilege('authenticated','public.macroliga_mi_plantilla(uuid)','EXECUTE') then raise exception 'missing authenticated grant'; end if;
